@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上帝視角國家模擬器・大地圖版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0e16;--panel:#131a28;--panel2:#1a2334;--border:#26304a;
+  --text:#dfe7f5;--muted:#7d8bab;--gold:#f0b429;--green:#3fb950;--red:#f85149;--blue:#58a6ff;
+}
+body{font-family:"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;background:radial-gradient(ellipse at top,#131c2b,#0a0e16 70%);color:var(--text);min-height:100vh;padding:12px;line-height:1.45;overflow:hidden}
+.hidden{display:none!important}
+.screen{max-width:1600px;margin:0 auto}
+
+/* ===== 建立國家 ===== */
+.setup-card{background:linear-gradient(160deg,#1a2233,#10151f);border:1px solid var(--border);border-radius:20px;padding:36px;max-width:780px;margin:40px auto;box-shadow:0 30px 80px rgba(0,0,0,.6);max-height:92vh;overflow-y:auto}
+.setup-card h1{font-size:32px;letter-spacing:3px;text-align:center;background:linear-gradient(90deg,#f5c74a,#e08a2e);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{text-align:center;color:var(--muted);margin:10px 0 26px;font-size:14px}
+.field-label{font-size:13px;color:var(--muted);margin:20px 0 10px;letter-spacing:1px;font-weight:600}
+input[type=text]{width:100%;padding:14px 18px;border-radius:12px;border:1px solid var(--border);background:#0b1018;color:var(--text);font-size:16px;outline:none;font-family:inherit}
+input[type=text]:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(240,180,41,.1)}
+.gov-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.gov-card{background:#0e141f;border:1px solid var(--border);border-radius:12px;padding:14px 12px;cursor:pointer;transition:.18s;text-align:center}
+.gov-card:hover{border-color:#3d4d73;transform:translateY(-2px)}
+.gov-card.sel{border-color:var(--gold);background:#1b2236;box-shadow:0 0 0 1px var(--gold) inset}
+.gov-icon{font-size:26px}.gov-name{font-size:14px;font-weight:700;margin:6px 0 4px}
+.gov-desc{font-size:11px;color:var(--muted);line-height:1.4}
+.color-row{display:flex;gap:10px;flex-wrap:wrap}
+.flag-opt{padding:5px;border-radius:8px;border:2px solid transparent;cursor:pointer;transition:.15s}
+.flag-opt:hover{border-color:#3d4d73}.flag-opt.sel{border-color:var(--gold)}
+.flag{position:relative;overflow:hidden;border-radius:4px;flex-shrink:0}
+.preview-wrap{display:flex;align-items:center;gap:16px;margin-top:14px}
+.preview-txt{color:var(--muted);font-size:13px}
+
+/* ===== 按鈕 ===== */
+.btn{font-family:inherit;border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:8px 14px;border-radius:9px;cursor:pointer;font-size:12.5px;transition:.15s;white-space:nowrap}
+.btn:hover{background:#28324a;border-color:#3d4d73}
+.btn.primary{background:linear-gradient(180deg,#f5c74a,#d99b0f);color:#1a1200;font-weight:700;border:none}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.big{width:100%;padding:16px;font-size:16px;margin-top:28px;border-radius:13px;letter-spacing:2px}
+.btn:disabled{opacity:.35;cursor:not-allowed;filter:grayscale(.6)}
+.btn.mini{padding:5px 10px;font-size:11.5px;border-radius:7px}
+
+/* ===== 頂欄 ===== */
+.topbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px 18px;margin-bottom:10px}
+.nation-id{display:flex;align-items:center;gap:12px;flex:1;min-width:180px}
+.nation-name{font-size:17px;font-weight:700;letter-spacing:1px}
+.nation-sub{font-size:11.5px;color:var(--muted)}
+.date{font-size:14px;color:var(--gold);font-weight:600;letter-spacing:1px;font-variant-numeric:tabular-nums}
+.season{font-size:12px;color:var(--blue);margin-left:6px}
+
+/* ===== 數值列 ===== */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:7px;margin-bottom:10px}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:7px 10px}
+.stat-label{font-size:10px;color:var(--muted);letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-val{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat-val.bad{color:var(--red)}
+.bar{height:3px;background:#0a0f18;border-radius:2px;overflow:hidden;margin-top:4px}
+.bar-fill{height:100%;border-radius:2px;transition:width .35s}
+
+/* ===== 分頁 ===== */
+.tabs{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button{font-family:inherit;background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:8px 15px;border-radius:10px;cursor:pointer;font-size:12.5px;transition:.15s}
+.tabs button:hover{color:var(--text)}
+.tabs button.active{background:var(--gold);color:#1a1200;font-weight:700;border-color:var(--gold)}
+.tab-panel{display:none}.tab-panel.active{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ===== 地圖 ===== */
+.map-layout{display:grid;grid-template-columns:1fr 320px;gap:10px;height:calc(100vh - 230px)}
+@media(max-width:1000px){.map-layout{grid-template-columns:1fr;height:auto}}
+.map-container{display:flex;flex-direction:column;min-height:0}
+.map-toolbar{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.map-toolbar button{font-family:inherit;background:var(--panel2);border:1px solid var(--border);color:var(--text);width:34px;height:30px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.map-toolbar button:hover{background:#28324a;border-color:var(--gold)}
+.zoom-label{font-size:12px;color:var(--muted);min-width:48px;text-align:center;font-variant-numeric:tabular-nums}
+.map-wrap{flex:1;background:#070b11;border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative;min-height:300px}
+#map-canvas{display:block;width:100%;height:100%;cursor:grab}
+#map-canvas:active{cursor:grabbing}
+#minimap{position:absolute;right:10px;bottom:10px;border:1px solid #3a4666;border-radius:8px;background:rgba(10,15,24,.9);box-shadow:0 4px 16px rgba(0,0,0,.5);cursor:pointer}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:10.5px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:3px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+.side-col{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0}
+.prov-panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:15px;min-height:160px}
+.prov-title{font-size:14px;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.prov-row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px dashed #1c2436}
+.prov-row:last-child{border-bottom:none}
+.tag{font-size:10px;padding:1px 7px;border-radius:20px;margin-left:6px;white-space:nowrap}
+.tag.player{background:#3d2f00;color:#f5c74a}
+.tag.enemy{background:#3d0f0f;color:#f88}
+.badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:20px;background:#1e2a44;color:#8da8e8;margin-left:4px}
+
+/* ===== 卡片 ===== */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px}
+.card h3{font-size:14px;margin-bottom:12px;letter-spacing:1px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px dashed #1c2436}
+.row:last-child{border-bottom:none}
+.row.total{border-top:1px solid var(--border);margin-top:5px;padding-top:10px;font-weight:700}
+.pos{color:var(--green)}.neg{color:var(--red)}
+.hint{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.6}
+.warn{font-size:11.5px;color:var(--gold);margin-top:7px}
+
+/* ===== 投資格 ===== */
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.inv-btn{font-family:inherit;text-align:left;background:#0e141f;border:1px solid var(--border);color:var(--text);border-radius:11px;padding:12px;cursor:pointer;transition:.15s}
+.inv-btn:hover:not(:disabled){border-color:var(--gold);transform:translateY(-2px);background:#1a2130}
+.inv-btn:disabled{opacity:.35;cursor:not-allowed}
+.inv-icon{font-size:20px}.inv-name{font-weight:700;font-size:13px;margin:5px 0 2px}
+.inv-desc{font-size:10.5px;color:var(--muted);min-height:26px;line-height:1.35}
+.inv-cost{font-size:11.5px;color:var(--gold);font-weight:700;margin-top:5px}
+.inv-cost.bad{color:var(--red)}
+
+/* ===== 稅率 ===== */
+.slider-row{display:flex;align-items:center;gap:14px}
+input[type=range]{flex:1;-webkit-appearance:none;height:6px;border-radius:3px;outline:none;background:linear-gradient(90deg,var(--green),var(--gold),var(--red))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--gold);cursor:pointer}
+.tax-val{font-size:18px;font-weight:700;color:var(--gold);min-width:52px;text-align:right}
+
+/* ===== 外交 ===== */
+.nation{border:1px solid var(--border);border-radius:11px;padding:11px;margin-bottom:8px;background:#0e141f}
+.nation-head{display:flex;align-items:center;gap:10px}
+.nation-flag{font-size:20px}
+.nation-info{flex:1;min-width:0}
+.nation-title{font-size:13px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.nation-rel{font-size:16px;font-weight:700;min-width:38px;text-align:right}
+.nation-actions{display:flex;gap:4px;flex-wrap:wrap;margin-top:9px}
+.nation-actions button{font-family:inherit;font-size:10.5px;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:7px;cursor:pointer;transition:.15s}
+.nation-actions button:hover{background:#28324a;border-color:var(--gold)}
+
+/* ===== 日誌 ===== */
+.log-list{max-height:520px;overflow-y:auto;padding-right:4px}
+.log-item{font-size:12.5px;padding:7px 10px;border-left:3px solid var(--border);margin-bottom:4px;background:#0e141f;border-radius:0 8px 8px 0}
+.log-item.good{border-left-color:var(--green)}
+.log-item.bad{border-left-color:var(--red)}
+.log-item.money{border-left-color:var(--gold)}
+.log-time{color:var(--muted);font-size:10.5px;margin-right:5px}
+.log-list::-webkit-scrollbar,.side-col::-webkit-scrollbar{width:6px}
+.log-list::-webkit-scrollbar-thumb,.side-col::-webkit-scrollbar-thumb{background:#26304a;border-radius:3px}
+
+/* ===== 彈窗 ===== */
+.modal-backdrop{position:fixed;inset:0;background:rgba(4,7,12,.85);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100}
+.modal{background:linear-gradient(160deg,#1c2437,#0f141e);border:1px solid #3a4666;border-radius:18px;padding:26px;max-width:560px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.8);animation:pop .22s ease;max-height:90vh;overflow-y:auto}
+@keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+.modal-icon{font-size:34px;text-align:center}
+.modal h2{font-size:18px;text-align:center;margin:10px 0 10px;letter-spacing:1px}
+.modal p{font-size:13.5px;color:#b9c4da;line-height:1.7;margin-bottom:18px;white-space:pre-line}
+.ev-options{display:flex;flex-direction:column;gap:8px}
+.ev-opt{font-family:inherit;text-align:left;background:#0e141f;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.15s}
+.ev-opt:hover{border-color:var(--gold);background:#1c2436;transform:translateX(3px)}
+.ev-opt b{display:block;font-size:13px;margin-bottom:2px}
+.ev-opt span{font-size:11.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="screen" id="setup">
+  <div class="setup-card">
+    <h1>🌍 上帝視角國家模擬器</h1>
+    <p class="sub">90×60 格大陸・十二國爭霸・十四種地形・河流城市資源</p>
+    <div class="field-label">國名</div>
+    <input type="text" id="in-name" maxlength="12" value="曙光共和國" placeholder="輸入國名">
+    <div class="field-label">政體</div>
+    <div class="gov-grid" id="gov-grid"></div>
+    <div class="field-label">國旗配色</div>
+    <div class="color-row" id="color-row"></div>
+    <div class="preview-wrap"><div id="flag-preview"></div><div class="preview-txt">你的國旗</div></div>
+    <button class="btn primary big" onclick="startGame()">建立國家 →</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="game" style="height:100vh;display:flex;flex-direction:column">
+  <header class="topbar">
+    <div class="nation-id">
+      <div id="hdr-flag"></div>
+      <div><div class="nation-name" id="hdr-name">—</div><div class="nation-sub" id="hdr-gov">—</div></div>
+    </div>
+    <div class="date" id="hdr-date">第 1 年 1 月<span class="season" id="hdr-season"></span></div>
+    <button class="btn primary" id="btn-next" onclick="nextTurn()">下一回合 ⏭</button>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <nav class="tabs">
+    <button data-tab="map" class="active" onclick="switchTab('map',this)">🗺️ 世界地圖</button>
+    <button data-tab="overview" onclick="switchTab('overview',this)">📊 概覽</button>
+    <button data-tab="domestic" onclick="switchTab('domestic',this)">🏛️ 內政</button>
+    <button data-tab="military" onclick="switchTab('military',this)">⚔️ 軍事</button>
+    <button data-tab="diplomacy" onclick="switchTab('diplomacy',this)">🤝 外交</button>
+    <button data-tab="log" onclick="switchTab('log',this)">📜 紀錄</button>
+  </nav>
+
+  <main style="flex:1;overflow-y:auto;min-height:0">
+    <section id="tab-map" class="tab-panel active" style="height:100%">
+      <div class="map-layout" style="height:100%">
+        <div class="map-container">
+          <div class="map-toolbar">
+            <button onclick="zoomBy(1.3)" title="放大">＋</button>
+            <button onclick="zoomBy(1/1.3)" title="縮小">－</button>
+            <button onclick="centerMap(true)" title="重置視角">⟲</button>
+            <span class="zoom-label" id="zoom-label">100%</span>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px">🖱️ 滾輪縮放・拖曳平移・點擊查看</span>
+          </div>
+          <div class="map-wrap" id="map-wrap">
+            <canvas id="map-canvas"></canvas>
+            <canvas id="minimap" width="180" height="120"></canvas>
+          </div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="side-col">
+          <div class="prov-panel" id="prov-panel"><div class="hint">點擊地圖上任何格子查看詳情。<br><br>我方領土：開發・建造<br>敵方領土：進攻</div></div>
+        </div>
+      </div>
+    </section>
+    <section id="tab-overview" class="tab-panel"></section>
+    <section id="tab-domestic" class="tab-panel"></section>
+    <section id="tab-military" class="tab-panel"></section>
+    <section id="tab-diplomacy" class="tab-panel"></section>
+    <section id="tab-log" class="tab-panel"></section>
+  </main>
+</div>
+
+<div class="modal-backdrop hidden" id="event-modal">
+  <div class="modal">
+    <div class="modal-icon" id="ev-icon">⚠️</div>
+    <h2 id="ev-title"></h2>
+    <p id="ev-text"></p>
+    <div class="ev-options" id="ev-options"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="end-modal">
+  <div class="modal">
+    <div class="modal-icon" id="end-icon">💥</div>
+    <h2 id="end-title"></h2>
+    <p id="end-text"></p>
+    <button class="btn primary big" style="margin-top:0" onclick="location.reload()">重新開始</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   一、基礎工具
+============================================================ */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function makeNoise(seed){
+  const r=mulberry32(seed),g={};
+  function rnd(x,y){const k=x+','+y;if(g[k]===undefined)g[k]=r();return g[k]}
+  const sm=t=>t*t*(3-2*t);
+  return function(x,y){
+    const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi;
+    const u=sm(xf),v=sm(yf);
+    const a=rnd(xi,yi),b=rnd(xi+1,yi),c=rnd(xi,yi+1),d=rnd(xi+1,yi+1);
+    return a*(1-u)*(1-v)+b*u*(1-v)+c*(1-u)*v+d*u*v;
+  }
+}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const fmt=v=>Math.round(v).toLocaleString('en-US');
+function shade(hex,amt){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)+amt,g=((n>>8)&255)+amt,b=(n&255)+amt;
+  r=clamp(r,0,255);g=clamp(g,0,255);b=clamp(b,0,255);
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function flagHTML(c,w){
+  const h=Math.round(w*.66);
+  return `<div class="flag" style="width:${w}px;height:${h}px;background:${c[0]}">
+    <div style="position:absolute;left:0;right:0;bottom:0;height:34%;background:${c[1]}"></div>
+    <div style="position:absolute;width:38%;aspect-ratio:1;border-radius:50%;background:${c[2]};top:50%;left:50%;transform:translate(-50%,-50%)"></div></div>`;
+}
+
+/* ============================================================
+   二、常數
+============================================================ */
+const MAP_W=90, MAP_H=60, HEX=10;
+const HEX_W=Math.sqrt(3)*HEX;
+const CANVAS_W=Math.ceil(MAP_W*HEX_W+HEX_W/2);
+const CANVAS_H=Math.ceil((MAP_H-1)*1.5*HEX+2*HEX);
+
+const TERRAIN={
+  deep:    {name:'深海',  color:'#0a1f33',food:0,mineral:0,energy:0,defense:0,pop:0},
+  water:   {name:'水域',  color:'#123a5c',food:0,mineral:0,energy:0,defense:0,pop:0},
+  coast:   {name:'海岸',  color:'#1d5a85',food:2,mineral:0,energy:0,defense:0,pop:0.3},
+  plains:  {name:'平原',  color:'#6ba33e',food:3,mineral:1,energy:0,defense:0,pop:2.0},
+  grass:   {name:'草原',  color:'#85b04a',food:2,mineral:1,energy:0,defense:0,pop:1.2},
+  forest:  {name:'森林',  color:'#2f6e37',food:2,mineral:2,energy:0,defense:2,pop:1.2},
+  rainforest:{name:'雨林',color:'#1d5a2e',food:2,mineral:2,energy:0,defense:2,pop:1.0},
+  hills:   {name:'丘陵',  color:'#8a7a3f',food:1,mineral:3,energy:1,defense:3,pop:0.8},
+  mountain:{name:'山地',  color:'#7a6e60',food:0,mineral:5,energy:1,defense:5,pop:0.3},
+  snow:    {name:'雪原',  color:'#c8ced8',food:0,mineral:2,energy:0,defense:4,pop:0.05},
+  tundra:  {name:'苔原',  color:'#9aa89a',food:1,mineral:2,energy:0,defense:2,pop:0.2},
+  desert:  {name:'沙漠',  color:'#c9b05e',food:0,mineral:3,energy:2,defense:1,pop:0.15},
+  swamp:   {name:'沼泽',  color:'#4a6b4a',food:1,mineral:1,energy:0,defense:1,pop:0.4},
+  volcanic:{name:'火山',  color:'#5a3a3a',food:0,mineral:6,energy:3,defense:2,pop:0.1},
+};
+
+const OWNERS={
+  player:  {name:'你的國家', color:[240,180,41]},
+  north:   {name:'北境聯邦', color:[74,144,217]},
+  east:    {name:'東海共和國',color:[92,214,92]},
+  south:   {name:'南陸聯盟', color:[224,82,82]},
+  west:    {name:'西漠王國', color:[169,112,224]},
+  central: {name:'中央帝國', color:[224,146,64]},
+  ne:      {name:'東北公國', color:[76,201,201]},
+  sw:      {name:'西南部落', color:[230,120,180]},
+  nw:      {name:'西北汗國', color:[180,180,80]},
+  se:      {name:'東南群島', color:[100,160,230]},
+  far_n:   {name:'極北聯盟', color:[200,200,220]},
+  far_e:   {name:'極東共和', color:[230,100,100]},
+};
+
+const SEEDS=[
+  {id:'player', c:24, r:44, w:0.72},
+  {id:'north',  c:28, r:10, w:1.0},
+  {id:'east',   c:76, r:22, w:1.0},
+  {id:'south',  c:58, r:52, w:1.0},
+  {id:'west',   c:10, r:28, w:1.0},
+  {id:'central',c:50, r:32, w:1.0},
+  {id:'ne',     c:80, r:8,  w:1.0},
+  {id:'sw',     c:12, r:52, w:1.0},
+  {id:'nw',     c:8,  r:8,  w:1.0},
+  {id:'se',     c:84, r:50, w:1.0},
+  {id:'far_n',  c:55, r:5,  w:1.0},
+  {id:'far_e',  c:88, r:35, w:1.0},
+];
+
+const FLAGS=[
+  ['#c8102e','#ffffff','#0033a0'],['#009739','#fedd00','#012169'],
+  ['#111111','#dd0000','#ffce00'],['#0055a4','#ffffff','#ef4135'],
+  ['#ff8200','#ffffff','#046a38'],['#7b1113','#f5c518','#1a1a1a'],
+  ['#003580','#ffd700','#ffffff'],['#6a1b9a','#eeeeee','#26a69a'],
+];
+const GOVS=[
+  {id:'democracy',name:'民主共和國',icon:'🗳️',desc:'民心穩定，科技外交優異',bonus:{stability:10,tech:5,military:-3,education:5}},
+  {id:'monarchy', name:'君主立憲制',icon:'👑',desc:'傳統穩固，軍隊效忠王室',bonus:{stability:5,military:6,tech:-2,corruption:3}},
+  {id:'junta',    name:'軍政府',    icon:'🎖️',desc:'軍力強大，民心浮動',bonus:{military:16,stability:-12,tech:-3,prestige:-5}},
+  {id:'socialist',name:'社會主義共和國',icon:'⚒️',desc:'重視福利與基礎建設',bonus:{stability:8,infra:6,military:-4,healthcare:8}},
+  {id:'federal',  name:'聯邦共和國',icon:'🏛️',desc:'地方自治，經濟活躍',bonus:{infra:8,tech:3,prestige:3,military:-2}},
+];
+
+const NATIONS_BASE=[
+  {id:'north',  name:'北境聯邦',  flag:'❄️', relation:50, power:80},
+  {id:'east',   name:'東海共和國',flag:'🌊', relation:45, power:65},
+  {id:'south',  name:'南陸聯盟',  flag:'🌴', relation:40, power:55},
+  {id:'west',   name:'西漠王國',  flag:'🏜️', relation:35, power:45},
+  {id:'central',name:'中央帝國',  flag:'🏛️', relation:30, power:95},
+  {id:'ne',     name:'東北公國',  flag:'🐻', relation:40, power:50},
+  {id:'sw',     name:'西南部落',  flag:'🦅', relation:45, power:35},
+  {id:'nw',     name:'西北汗國',  flag:'🐎', relation:38, power:42},
+  {id:'se',     name:'東南群島',  flag:'🐚', relation:42, power:38},
+  {id:'far_n',  name:'極北聯盟',  flag:'🐺', relation:35, power:60},
+  {id:'far_e',  name:'極東共和',  flag:'🌋', relation:40, power:52},
+];
+
+const INVESTMENTS=[
+  {id:'welfare', icon:'🏠',name:'民生投資',cost:200,desc:'穩定 +8，幸福 +5',effect:{stability:8,happiness:5}},
+  {id:'research',icon:'🔬',name:'科研補助',cost:250,desc:'科技 +6，教育 +3',effect:{tech:6,education:3}},
+  {id:'infra',   icon:'🏗️',name:'基礎建設',cost:250,desc:'基建 +6',effect:{infra:6}},
+  {id:'campaign',icon:'📣',name:'宣傳運動',cost:150,desc:'穩定 +5，聲望 +3',effect:{stability:5,prestige:3}},
+  {id:'health',  icon:'🏥',name:'醫療投資',cost:280,desc:'醫療 +6，穩定 +3',effect:{healthcare:6,stability:3}},
+  {id:'anticor', icon:'⚖️',name:'反腐行動',cost:350,desc:'腐敗 -8，聲望 +3',effect:{corruption:-8,prestige:3}},
+  {id:'energy',  icon:'⚡',name:'能源建設',cost:320,desc:'能源 +8，基建 +2',effect:{energy:8,infra:2}},
+  {id:'culture', icon:'🎭',name:'文化振興',cost:220,desc:'聲望 +6，穩定 +4',effect:{prestige:6,stability:4}},
+];
+const MIL_ACTIONS=[
+  {id:'recruit',icon:'🪖',name:'擴大徵兵',cost:250,desc:'軍力 +10，穩定 -4',effect:{military:10,stability:-4}},
+  {id:'drill',  icon:'🎯',name:'軍事演習',cost:300,desc:'軍力 +4，聲望 +4',effect:{military:4,prestige:4}},
+  {id:'rnd',    icon:'🚀',name:'武器研發',cost:600,desc:'軍力 +8，科技 +4',effect:{military:8,tech:4}},
+  {id:'disarm', icon:'🕊️',name:'裁減軍備',cost:-400,desc:'軍力 -12，穩定 -2，聲望 -3',effect:{military:-12,stability:-2,prestige:-3}},
+];
+
+const BUILDINGS={
+  farm:   {name:'農場',icon:'🌾',cost:150,effect:{income:8},req:{terrain:['plains','grass','coast']}},
+  mine:   {name:'礦場',icon:'⛏️',cost:200,effect:{income:12},req:{terrain:['hills','mountain','volcanic']}},
+  factory:{name:'工廠',icon:'🏭',cost:300,effect:{income:18},req:{}},
+  port:   {name:'港口',icon:'⚓',cost:250,effect:{income:15},req:{terrain:['coast']}},
+  fort:   {name:'要塞',icon:'🏰',cost:200,effect:{defense:5},req:{}},
+  road:   {name:'道路',icon:'🛣️',cost:120,effect:{income:5},req:{}},
+};
+
+const CITIES=[
+  {name:'曙光城',type:'city'},{name:'新港',type:'town'},{name:'鐵山',type:'town'},
+  {name:'河谷',type:'village'},{name:'北嶺',type:'village'},{name:'望海',type:'city'},
+  {name:'金原',type:'town'},{name:'石橋',type:'village'},{name:'星港',type:'city'},
+  {name:'沙丘',type:'village'},{name:'翠林',type:'town'},{name:'黑岩',type:'village'},
+];
+
+/* ============================================================
+   三、事件庫（沿用 63 種）
+============================================================ */
+const EVENTS=[
+{id:'recession',cat:'經濟',icon:'📉',title:'經濟衰退',weight:10,text:'國內生產總值連續兩季下滑，失業率攀升，消費信心跌至谷底。',options:[
+ {label:'大規模財政刺激',desc:'花費 800 資金，穩定 +6，科技 +2',effect:{treasury:-800,stability:6,tech:2}},
+ {label:'寬鬆貨幣政策',desc:'穩定 +3，通膨 +5',effect:{stability:3,inflation:5}},
+ {label:'自由市場調節',desc:'穩定 -5，科技 +3',effect:{stability:-5,tech:3}}]},
+{id:'inflation',cat:'經濟',icon:'💸',title:'通膨飆升',weight:9,text:'物價一個月內上漲逾兩成，民眾搶購物資，央行總裁面臨下台壓力。',cond:s=>s.inflation>50,options:[
+ {label:'升息抑制',desc:'通膨 -12，穩定 -4',effect:{inflation:-12,stability:-4}},
+ {label:'價格管制',desc:'通膨 -8，腐敗 +5',effect:{inflation:-8,corruption:5}},
+ {label:'放任不管',desc:'通膨 +8，穩定 -8',effect:{inflation:8,stability:-8}}]},
+{id:'crash',cat:'經濟',icon:'📊',title:'股市崩盤',weight:8,text:'主要指數單日暴跌 15%，恐慌性拋售蔓延，多家券商系統癱瘓。',options:[
+ {label:'政府注資護盤',desc:'花費 600 資金，穩定 +4',effect:{treasury:-600,stability:4}},
+ {label:'停市整頓',desc:'花費 200 資金，穩定 +2，科技 -2',effect:{treasury:-200,stability:2,tech:-2}},
+ {label:'任其下跌',desc:'穩定 -6，腐敗 -2',effect:{stability:-6,corruption:-2}}]},
+{id:'bankrun',cat:'經濟',icon:'🏦',title:'銀行擠兌',weight:7,text:'第三大銀行傳出壞帳危機，數萬民眾湧入分行提領存款。',options:[
+ {label:'全額保障存款',desc:'花費 900 資金，穩定 +8',effect:{treasury:-900,stability:8}},
+ {label:'部分保障',desc:'花費 400 資金，穩定 +2',effect:{treasury:-400,stability:2}},
+ {label:'放任倒閉',desc:'穩定 -10，通膨 +5',effect:{stability:-10,inflation:5}}]},
+{id:'fdi',cat:'經濟',icon:'💼',title:'外資湧入',weight:9,text:'多家跨國企業表達設廠意願，將帶來大量就業與技術轉移。',options:[
+ {label:'提供租稅優惠',desc:'花費 300 資金，基建 +5，穩定 +5',effect:{treasury:-300,infra:5,stability:5}},
+ {label:'嚴格環保審查',desc:'花費 200 資金，聲望 +6，基建 +2',effect:{treasury:-200,prestige:6,infra:2}},
+ {label:'拒絕外資',desc:'穩定 +2，聲望 -4',effect:{stability:2,prestige:-4}}]},
+{id:'trade_surplus',cat:'經濟',icon:'🚢',title:'貿易順差擴大',weight:7,text:'出口連續成長，外匯存底創新高，但貿易夥伴開始抱怨失衡。',options:[
+ {label:'擴大進口',desc:'花費 200 資金，穩定 +4，關係 +5',effect:{treasury:-200,stability:4,relation:5}},
+ {label:'維持順差',desc:'國庫 +500，關係 -3',effect:{treasury:500,relation:-3}}]},
+{id:'energy_crisis',cat:'經濟',icon:'🛢️',title:'能源危機',weight:8,text:'主要能源供應國減產，油價飆漲，工廠被迫減班。',options:[
+ {label:'釋出戰備儲油',desc:'能源 +10，穩定 +4',effect:{energy:10,stability:4}},
+ {label:'加速綠能轉型',desc:'花費 600 資金，科技 +6，能源 +6',effect:{treasury:-600,tech:6,energy:6}},
+ {label:'補貼油價',desc:'花費 400 資金，穩定 +3，通膨 +3',effect:{treasury:-400,stability:3,inflation:3}}]},
+{id:'food_short',cat:'經濟',icon:'🌾',title:'糧食短缺',weight:8,text:'異常氣候導致主糧減產，糧價飆漲，部分地區出現搶糧。',options:[
+ {label:'緊急進口糧食',desc:'花費 500 資金，穩定 +6',effect:{treasury:-500,stability:6}},
+ {label:'釋出儲糧',desc:'穩定 +3，能源 -2',effect:{stability:3,energy:-2}},
+ {label:'實施配給',desc:'穩定 -4，腐敗 +4',effect:{stability:-4,corruption:4}}]},
+{id:'corruption',cat:'政治',icon:'🕵️',title:'腐敗醜聞',weight:9,text:'媒體揭露多名部長收受建商賄賂，金額高達數十億。',options:[
+ {label:'成立獨立調查',desc:'腐敗 -10，聲望 +5，穩定 +2',effect:{corruption:-10,prestige:5,stability:2}},
+ {label:'嚴懲涉案官員',desc:'腐敗 -6，穩定 -2',effect:{corruption:-6,stability:-2}},
+ {label:'壓下新聞',desc:'腐敗 +5，聲望 -8，穩定 -3',effect:{corruption:5,prestige:-8,stability:-3}}]},
+{id:'opposition',cat:'政治',icon:'🗣️',title:'反對黨崛起',weight:8,text:'反對陣營在地方選舉大勝，要求提前大選的聲浪高漲。',options:[
+ {label:'對話協商',desc:'穩定 +5，聲望 +3',effect:{stability:5,prestige:3}},
+ {label:'強力打壓',desc:'穩定 -6，聲望 -6，軍力 +2',effect:{stability:-6,prestige:-6,military:2}}]},
+{id:'assassination',cat:'政治',icon:'🔫',title:'政治暗殺',weight:5,text:'一位重量級政治人物在公開場合遇刺身亡，舉國震驚。',options:[
+ {label:'全國哀悼',desc:'穩定 +4，聲望 +5',effect:{stability:4,prestige:5}},
+ {label:'全面緝凶',desc:'花費 300 資金，穩定 +6',effect:{treasury:-300,stability:6}},
+ {label:'藉機整肅',desc:'穩定 -5，腐敗 -4，聲望 -3',effect:{stability:-5,corruption:-4,prestige:-3}}]},
+{id:'separatism',cat:'政治',icon:'🏴',title:'地方分離主義',weight:7,text:'邊境省份傳出獨立公投連署，分離主義領袖公開演說。',cond:s=>s.stability<55,options:[
+ {label:'給予自治權',desc:'穩定 +6，基建 -2',effect:{stability:6,infra:-2}},
+ {label:'派兵鎮壓',desc:'軍力 -3，穩定 -3，聲望 -5',effect:{military:-3,stability:-3,prestige:-5}},
+ {label:'經濟安撫',desc:'花費 500 資金，穩定 +8',effect:{treasury:-500,stability:8}}]},
+{id:'protest',cat:'政治',icon:'📢',title:'大規模示威',weight:10,text:'數十萬民眾走上街頭，抗議物價與稅負，城市陷入癱瘓。',cond:s=>s.taxRate>32||s.stability<55,options:[
+ {label:'調降稅率',desc:'稅率 -8，穩定 +10',tax:-8,effect:{stability:10}},
+ {label:'發放補助金',desc:'花費 500 資金，穩定 +12',effect:{treasury:-500,stability:12}},
+ {label:'強力鎮壓',desc:'穩定 -10，聲望 -8，軍力 +2',effect:{stability:-10,prestige:-8,military:2}}]},
+{id:'border',cat:'軍事',icon:'🚨',title:'邊境衝突',weight:9,text:'鄰國巡邏隊越界，雙方發生交火，造成人員傷亡。',options:[
+ {label:'外交抗議',desc:'花費 50 資金，聲望 -3，穩定 -2',effect:{treasury:-50,prestige:-3,stability:-2}},
+ {label:'增兵邊境',desc:'花費 300 資金，軍力 +3，聲望 +5',effect:{treasury:-300,military:3,prestige:5,stability:2}},
+ {label:'全面動員',desc:'花費 800 資金，軍力 +8，穩定 -5，聲望 +10',effect:{treasury:-800,military:8,stability:-5,prestige:10}}]},
+{id:'armsrace',cat:'軍事',icon:'⚔️',title:'軍備競賽',weight:7,text:'鄰國大幅擴軍，我國將領呼籲跟進，否則將失去戰略平衡。',options:[
+ {label:'全力擴軍',desc:'花費 700 資金，軍力 +12，穩定 -4',effect:{treasury:-700,military:12,stability:-4}},
+ {label:'保持克制',desc:'軍力 -3，聲望 -2，穩定 +3',effect:{military:-3,prestige:-2,stability:3}}]},
+{id:'terror',cat:'軍事',icon:'💣',title:'恐怖攻擊',weight:8,text:'首都地鐵站發生爆炸，數十人傷亡，全國陷入恐慌。',options:[
+ {label:'加強維安',desc:'花費 400 資金，穩定 +8，軍力 +3',effect:{treasury:-400,stability:8,military:3}},
+ {label:'情報體系改革',desc:'花費 300 資金，科技 +4，穩定 +5',effect:{treasury:-300,tech:4,stability:5}},
+ {label:'限制公民自由',desc:'穩定 +3，聲望 -5',effect:{stability:3,prestige:-5}}]},
+{id:'coup',cat:'軍事',icon:'🗡️',title:'政變陰謀',weight:6,text:'情報單位截獲密報：部分軍方高層正在策劃政變。',cond:s=>s.stability<42&&s.military>25,options:[
+ {label:'大規模清洗',desc:'軍力 -10，穩定 +6，聲望 -6',effect:{military:-10,stability:6,prestige:-6}},
+ {label:'收買將領',desc:'花費 600 資金，穩定 +8',effect:{treasury:-600,stability:8}},
+ {label:'按兵不動',desc:'穩定 -8，軍力 -3',effect:{stability:-8,military:-3}}]},
+{id:'draft',cat:'軍事',icon:'📋',title:'徵兵抗議',weight:7,text:'政府延長兵役的消息引發反彈，年輕人在各地發起抗議。',options:[
+ {label:'暫緩徵兵',desc:'軍力 -4，穩定 +5',effect:{military:-4,stability:5}},
+ {label:'提高待遇',desc:'花費 300 資金，軍力 +5，穩定 +2',effect:{treasury:-300,military:5,stability:2}},
+ {label:'強制執行',desc:'軍力 +6，穩定 -6',effect:{military:6,stability:-6}}]},
+{id:'drill_success',cat:'軍事',icon:'🎯',title:'軍演大成功',weight:7,text:'代號「鋼鐵長城」的軍事演習圓滿落幕，展示強大武力。',options:[
+ {label:'公開展示',desc:'軍力 +3，聲望 +6',effect:{military:3,prestige:6}},
+ {label:'保持神秘',desc:'軍力 +2，科技 +2',effect:{military:2,tech:2}}]},
+{id:'smuggle',cat:'軍事',icon:'🔫',title:'武器走私',weight:6,text:'海關查獲大批走私軍火，懷疑有境外勢力介入。',options:[
+ {label:'加強邊境管制',desc:'花費 300 資金，軍力 +3，穩定 +3',effect:{treasury:-300,military:3,stability:3}},
+ {label:'順藤摸瓜',desc:'花費 200 資金，科技 +3，腐敗 -3',effect:{treasury:-200,tech:3,corruption:-3}}]},
+{id:'warthreat',cat:'軍事',icon:'💥',title:'戰爭威脅',weight:5,text:'鄰國在邊境集結重兵，國際社會呼籲雙方克制。',cond:s=>s.military<25,options:[
+ {label:'請求國際調停',desc:'花費 400 資金，聲望 +5，關係 +8',effect:{treasury:-400,prestige:5,relation:8}},
+ {label:'緊急動員',desc:'花費 600 資金，軍力 +10',effect:{treasury:-600,military:10}},
+ {label:'割地求和',desc:'失去 1 塊領土，穩定 -10，聲望 -12',effect:{stability:-10,prestige:-12,territory:-1}}]},
+{id:'ally_help',cat:'外交',icon:'🆘',title:'盟友求援',weight:8,text:'友好鄰國遭受自然災害，向我國請求緊急援助。',options:[
+ {label:'慷慨援助',desc:'花費 500 資金，聲望 +8，關係 +10',effect:{treasury:-500,prestige:8,relation:10}},
+ {label:'象徵性援助',desc:'花費 150 資金，聲望 +2，關係 +3',effect:{treasury:-150,prestige:2,relation:3}},
+ {label:'拒絕',desc:'聲望 -6，關係 -8',effect:{prestige:-6,relation:-8}}]},
+{id:'sanction',cat:'外交',icon:'🚫',title:'國際制裁',weight:6,text:'因人權問題，多國宣布對我國實施經濟制裁。',options:[
+ {label:'外交斡旋',desc:'花費 400 資金，關係 +8，聲望 +5',effect:{treasury:-400,relation:8,prestige:5}},
+ {label:'反制裁',desc:'關係 -10，穩定 +3',effect:{relation:-10,stability:3}},
+ {label:'無視制裁',desc:'國庫 -300，聲望 -5',effect:{treasury:-300,prestige:-5}}]},
+{id:'summit',cat:'外交',icon:'🌐',title:'國際峰會邀請',weight:8,text:'世界主要強國邀請你出席高峰會，這是提升國際地位的良機。',options:[
+ {label:'親自出席',desc:'花費 300 資金，聲望 +12，關係 +6',effect:{treasury:-300,prestige:12,relation:6}},
+ {label:'派代表團',desc:'花費 100 資金，聲望 +5，關係 +2',effect:{treasury:-100,prestige:5,relation:2}},
+ {label:'婉拒邀請',desc:'聲望 -5',effect:{prestige:-5}}]},
+{id:'dispute',cat:'外交',icon:'🏝️',title:'領土爭端',weight:7,text:'鄰國聲稱對我國外海島嶼擁有主權，雙方艦艇對峙。',options:[
+ {label:'國際仲裁',desc:'花費 300 資金，聲望 +6，關係 +3',effect:{treasury:-300,prestige:6,relation:3}},
+ {label:'強硬巡航',desc:'軍力 +3，關係 -8，聲望 +4',effect:{military:3,relation:-8,prestige:4}},
+ {label:'擱置爭議',desc:'關係 +5，聲望 -3',effect:{relation:5,prestige:-3}}]},
+{id:'refugee',cat:'外交',icon:'🏕️',title:'難民潮',weight:7,text:'鄰國戰亂導致大量難民湧入邊境，人道危機迫在眉睫。',options:[
+ {label:'開放收容',desc:'花費 400 資金，聲望 +8，穩定 -3',effect:{treasury:-400,prestige:8,stability:-3}},
+ {label:'提供物資',desc:'花費 200 資金，聲望 +4',effect:{treasury:-200,prestige:4}},
+ {label:'關閉邊境',desc:'聲望 -6，穩定 +2',effect:{prestige:-6,stability:2}}]},
+{id:'spy',cat:'外交',icon:'🕶️',title:'間諜醜聞',weight:6,text:'我國駐外使館人員被控從事間諜活動，遭對方驅逐。',options:[
+ {label:'道歉緩和',desc:'關係 +5，聲望 -3',effect:{relation:5,prestige:-3}},
+ {label:'否認指控',desc:'關係 -6，穩定 +2',effect:{relation:-6,stability:2}},
+ {label:'對等驅逐',desc:'關係 -10，聲望 +3',effect:{relation:-10,prestige:3}}]},
+{id:'trade_talk',cat:'外交',icon:'📝',title:'貿易談判',weight:7,text:'多國代表齊聚我國，洽談自由貿易協定。',options:[
+ {label:'積極推進',desc:'花費 200 資金，關係 +6，基建 +2',effect:{treasury:-200,relation:6,infra:2}},
+ {label:'保護本國產業',desc:'穩定 +3，關係 -3',effect:{stability:3,relation:-3}}]},
+{id:'delegation',cat:'外交',icon:'🤵',title:'外交使團來訪',weight:8,text:'友好國家派出高規格使團訪問，尋求深化合作。',options:[
+ {label:'盛大接待',desc:'花費 250 資金，關係 +8，聲望 +4',effect:{treasury:-250,relation:8,prestige:4}},
+ {label:'簡樸接待',desc:'花費 50 資金，關係 +3',effect:{treasury:-50,relation:3}}]},
+{id:'strike',cat:'社會',icon:'✊',title:'大規模罷工',weight:9,text:'工會串聯全國勞工罷工，要求調漲基本工資與改善勞動條件。',options:[
+ {label:'同意加薪',desc:'花費 400 資金，穩定 +8，通膨 +3',effect:{treasury:-400,stability:8,inflation:3}},
+ {label:'勞資協商',desc:'花費 150 資金，穩定 +4',effect:{treasury:-150,stability:4}},
+ {label:'強制仲裁',desc:'穩定 -6，聲望 -4',effect:{stability:-6,prestige:-4}}]},
+{id:'ethnic',cat:'社會',icon:'🕊️',title:'族群衝突',weight:7,text:'兩個主要族群在邊境城市爆發暴力衝突，多人受傷。',options:[
+ {label:'派兵隔離',desc:'軍力 -2，穩定 +4',effect:{military:-2,stability:4}},
+ {label:'族群對話',desc:'花費 300 資金，穩定 +8，聲望 +4',effect:{treasury:-300,stability:8,prestige:4}},
+ {label:'偏袒一方',desc:'穩定 -8，聲望 -5',effect:{stability:-8,prestige:-5}}]},
+{id:'religion',cat:'社會',icon:'⛪',title:'宗教爭端',weight:6,text:'不同宗教團體因聖地歸屬問題爆發激烈爭執。',options:[
+ {label:'立法保障信仰自由',desc:'花費 200 資金，穩定 +5，聲望 +3',effect:{treasury:-200,stability:5,prestige:3}},
+ {label:'偏袒主流宗教',desc:'穩定 -4，聲望 -3',effect:{stability:-4,prestige:-3}}]},
+{id:'aging',cat:'社會',icon:'👴',title:'人口老齡化',weight:6,text:'生育率持續探底，老年人口占比突破 20%，勞動力短缺。',options:[
+ {label:'生育補貼',desc:'花費 600 資金，穩定 +6',effect:{treasury:-600,stability:6}},
+ {label:'開放移民',desc:'穩定 -2，科技 +3，人口 +3',effect:{stability:-2,tech:3,population:3}},
+ {label:'延後退休年齡',desc:'穩定 -5，科技 +2',effect:{stability:-5,tech:2}}]},
+{id:'immigration',cat:'社會',icon:'🌐',title:'移民問題',weight:7,text:'大量移民湧入都市，引發就業與文化衝突的辯論。',options:[
+ {label:'融合政策',desc:'花費 350 資金，穩定 +5，科技 +3',effect:{treasury:-350,stability:5,tech:3}},
+ {label:'嚴格限制',desc:'穩定 +2，聲望 -4',effect:{stability:2,prestige:-4}}]},
+{id:'education',cat:'社會',icon:'🎓',title:'教育危機',weight:7,text:'教師工會發起罷教，大學畢業生失業率創新高。',options:[
+ {label:'教育改革',desc:'花費 500 資金，教育 +8，科技 +4',effect:{treasury:-500,education:8,tech:4}},
+ {label:'擴大教育預算',desc:'花費 300 資金，教育 +5',effect:{treasury:-300,education:5}},
+ {label:'削減教育經費',desc:'教育 -6，穩定 -4',effect:{education:-6,stability:-4}}]},
+{id:'housing',cat:'社會',icon:'🏘️',title:'住房危機',weight:7,text:'都會區房價飆漲，年輕人買不起房，社會怨氣沸騰。',options:[
+ {label:'興建社會住宅',desc:'花費 600 資金，穩定 +8，基建 +3',effect:{treasury:-600,stability:8,infra:3}},
+ {label:'打房政策',desc:'穩定 +4，腐敗 -3',effect:{stability:4,corruption:-3}},
+ {label:'放任市場',desc:'穩定 -5',effect:{stability:-5}}]},
+{id:'health',cat:'社會',icon:'🏥',title:'醫療崩潰',weight:7,text:'流感與肺炎雙重夾擊，醫院急診室爆滿，醫療人員過勞。',options:[
+ {label:'緊急擴充醫療',desc:'花費 500 資金，醫療 +8，穩定 +4',effect:{treasury:-500,healthcare:8,stability:4}},
+ {label:'招募志工',desc:'花費 100 資金，醫療 +2',effect:{treasury:-100,healthcare:2}},
+ {label:'削減非急迫服務',desc:'醫療 -4，穩定 -3',effect:{healthcare:-4,stability:-3}}]},
+{id:'breakthrough',cat:'科技',icon:'💡',title:'科技突破',weight:8,text:'本國科學家在新能源領域取得重大突破，國際學術界為之震動。',options:[
+ {label:'投入產業化',desc:'花費 400 資金，科技 +8，基建 +4',effect:{treasury:-400,tech:8,infra:4}},
+ {label:'發表論文共享',desc:'科技 +4，聲望 +10',effect:{tech:4,prestige:10}}]},
+{id:'cyber',cat:'科技',icon:'💻',title:'網路攻擊',weight:7,text:'國家電網與金融系統遭大規模駭客攻擊，部分地區停電。',options:[
+ {label:'成立資安中心',desc:'花費 500 資金，科技 +6，穩定 +4',effect:{treasury:-500,tech:6,stability:4}},
+ {label:'緊急修補',desc:'花費 200 資金，穩定 +2',effect:{treasury:-200,stability:2}},
+ {label:'追究境外勢力',desc:'關係 -5，聲望 +3',effect:{relation:-5,prestige:3}}]},
+{id:'ai',cat:'科技',icon:'🤖',title:'AI 崛起',weight:7,text:'人工智慧取代大量工作崗位，失業問題引發社會焦慮。',options:[
+ {label:'全民基本收入',desc:'花費 700 資金，穩定 +10',effect:{treasury:-700,stability:10}},
+ {label:'職業再訓練',desc:'花費 400 資金，教育 +6，科技 +3',effect:{treasury:-400,education:6,tech:3}},
+ {label:'限制 AI 發展',desc:'科技 -5，穩定 +3',effect:{tech:-5,stability:3}}]},
+{id:'space',cat:'科技',icon:'🚀',title:'太空探索',weight:6,text:'我國首枚自主研發火箭成功發射，舉國歡騰。',options:[
+ {label:'加大太空預算',desc:'花費 600 資金，科技 +8，聲望 +8',effect:{treasury:-600,tech:8,prestige:8}},
+ {label:'商業化合作',desc:'國庫 +300，科技 +3',effect:{treasury:300,tech:3}}]},
+{id:'energy_rev',cat:'科技',icon:'☀️',title:'能源革命',weight:6,text:'新一代太陽能技術取得突破，發電成本大幅下降。',options:[
+ {label:'全國推廣',desc:'花費 500 資金，能源 +12，科技 +4',effect:{treasury:-500,energy:12,tech:4}},
+ {label:'技術出口',desc:'國庫 +400，聲望 +4',effect:{treasury:400,prestige:4}}]},
+{id:'quake',cat:'環境',icon:'🌋',title:'強烈地震',weight:7,text:'西部山區發生規模 7.2 強震，多座城市受創。',options:[
+ {label:'全力救災',desc:'花費 600 資金，穩定 +6，聲望 +5',effect:{treasury:-600,stability:6,prestige:5}},
+ {label:'簡易處理',desc:'花費 200 資金，穩定 -8',effect:{treasury:-200,stability:-8}},
+ {label:'向國際求援',desc:'花費 100 資金，穩定 +2，聲望 -4，關係 +5',effect:{treasury:-100,stability:2,prestige:-4,relation:5}}]},
+{id:'flood',cat:'環境',icon:'🌊',title:'嚴重洪災',weight:8,text:'連日暴雨導致河水暴漲，下游數十萬人被迫撤離。',options:[
+ {label:'大規模救災',desc:'花費 550 資金，穩定 +6，基建 -2',effect:{treasury:-550,stability:6,infra:-2}},
+ {label:'興建堤防',desc:'花費 700 資金，基建 +6，穩定 +4',effect:{treasury:-700,infra:6,stability:4}},
+ {label:'疏散安置',desc:'花費 250 資金，穩定 +2',effect:{treasury:-250,stability:2}}]},
+{id:'drought',cat:'環境',icon:'🌵',title:'嚴重乾旱',weight:7,text:'連續數月無雨，水庫見底，農業面臨嚴峻考驗。',options:[
+ {label:'興建水利設施',desc:'花費 600 資金，基建 +6，穩定 +3',effect:{treasury:-600,infra:6,stability:3}},
+ {label:'限制用水',desc:'穩定 -3，能源 +3',effect:{stability:-3,energy:3}},
+ {label:'人工造雨',desc:'花費 250 資金，穩定 +2',effect:{treasury:-250,stability:2}}]},
+{id:'hurricane',cat:'環境',icon:'🌀',title:'超級颶風',weight:6,text:'五級颶風直撲沿海，風速突破每小時 250 公里。',options:[
+ {label:'提前撤離',desc:'花費 400 資金，穩定 +5',effect:{treasury:-400,stability:5}},
+ {label:'災後重建',desc:'花費 600 資金，基建 +4，穩定 +3',effect:{treasury:-600,infra:4,stability:3}},
+ {label:'應變不足',desc:'穩定 -10，基建 -5',effect:{stability:-10,infra:-5}}]},
+{id:'plague',cat:'環境',icon:'🦠',title:'疫情爆發',weight:8,text:'新型傳染病在南部蔓延，醫療系統承受巨大壓力。',options:[
+ {label:'封城防疫',desc:'花費 500 資金，穩定 -4，人口 -1',effect:{treasury:-500,stability:-4,population:-1}},
+ {label:'加速疫苗研發',desc:'花費 700 資金，科技 +6，穩定 +3',effect:{treasury:-700,tech:6,stability:3}},
+ {label:'佛系應對',desc:'穩定 -12，聲望 -6，人口 -2',effect:{stability:-12,prestige:-6,population:-2}}]},
+{id:'wildfire',cat:'環境',icon:'🔥',title:'森林大火',weight:6,text:'乾燥氣候引發大規模森林火災，濃煙籠罩多座城市。',options:[
+ {label:'全力滅火',desc:'花費 400 資金，穩定 +4',effect:{treasury:-400,stability:4}},
+ {label:'疏散居民',desc:'花費 200 資金，穩定 +2',effect:{treasury:-200,stability:2}},
+ {label:'任其燃燒',desc:'穩定 -6，基建 -3',effect:{stability:-6,infra:-3}}]},
+{id:'sports',cat:'文化',icon:'🏆',title:'體育賽事奪冠',weight:8,text:'本國代表隊在世界盃中爆冷奪冠，全國上下歡聲雷動。',options:[
+ {label:'盛大慶祝',desc:'花費 200 資金，穩定 +10，聲望 +6',effect:{treasury:-200,stability:10,prestige:6}},
+ {label:'低調表揚',desc:'穩定 +5，聲望 +2',effect:{stability:5,prestige:2}}]},
+{id:'culture_export',cat:'文化',icon:'🎬',title:'文化輸出',weight:7,text:'本國電影與流行音樂在國際大放異彩，掀起文化熱潮。',options:[
+ {label:'政府大力扶植',desc:'花費 250 資金，聲望 +8，穩定 +5',effect:{treasury:-250,prestige:8,stability:5}},
+ {label:'順其自然',desc:'聲望 +3',effect:{prestige:3}}]},
+{id:'nobel',cat:'文化',icon:'🎖️',title:'諾貝爾獎',weight:5,text:'本國學者榮獲諾貝爾獎，學術成就獲得國際最高肯定。',options:[
+ {label:'設立研究基金',desc:'花費 400 資金，科技 +6，教育 +5，聲望 +8',effect:{treasury:-400,tech:6,education:5,prestige:8}},
+ {label:'公開表彰',desc:'聲望 +5',effect:{prestige:5}}]},
+{id:'revolution',cat:'特殊',icon:'🔥',title:'革命浪潮',weight:20,text:'首都爆發大規模革命，群眾佔領政府大樓，軍隊倒戈。',cond:s=>s.stability<20,options:[
+ {label:'血腥鎮壓',desc:'穩定 -10，軍力 -8，聲望 -15，人口 -2',effect:{stability:-10,military:-8,prestige:-15,population:-2}},
+ {label:'宣布改革',desc:'穩定 +10，腐敗 -10，聲望 +5',effect:{stability:10,corruption:-10,prestige:5}},
+ {label:'流亡海外',desc:'遊戲結束',effect:{gameover:true}}]},
+{id:'golden_age',cat:'特殊',icon:'🌟',title:'黃金時代',weight:4,text:'在您的領導下，國家迎來前所未有的繁榮時期，萬民稱頌。',cond:s=>s.stability>80&&s.treasury>2000,options:[
+ {label:'繼續前進',desc:'穩定 +5，聲望 +10，科技 +3',effect:{stability:5,prestige:10,tech:3}},
+ {label:'舉辦慶典',desc:'花費 300 資金，穩定 +10，聲望 +5',effect:{treasury:-300,stability:10,prestige:5}}]},
+{id:'resource_find',cat:'特殊',icon:'⛏️',title:'發現礦產資源',weight:6,text:'勘探隊在東部山區發現大型稀土礦脈，可能改變國家命運。',options:[
+ {label:'國營開採',desc:'花費 500 資金，基建 +8，穩定 +4',effect:{treasury:-500,infra:8,stability:4}},
+ {label:'開放外資',desc:'國庫 +800，基建 +4，聲望 -3',effect:{treasury:800,infra:4,prestige:-3}},
+ {label:'暫不開發',desc:'聲望 +4，穩定 +2',effect:{prestige:4,stability:2}}]},
+{id:'braindrain',cat:'特殊',icon:'✈️',title:'人才外流',weight:6,text:'大量高學歷青年選擇移民海外，國內產業面臨人才斷層。',cond:s=>s.stability<60,options:[
+ {label:'提高薪資待遇',desc:'花費 500 資金，科技 +3，穩定 +6',effect:{treasury:-500,tech:3,stability:6}},
+ {label:'限制移民',desc:'穩定 -5，科技 -3，聲望 -4',effect:{stability:-5,tech:-3,prestige:-4}}]},
+{id:'financial_crisis',cat:'特殊',icon:'📉',title:'金融危機',weight:6,text:'股市崩盤，多家銀行陷入擠兌危機，經濟情勢急速惡化。',options:[
+ {label:'注資救市',desc:'花費 800 資金，穩定 +5',effect:{treasury:-800,stability:5}},
+ {label:'放任市場',desc:'國庫 +300，穩定 -10',effect:{treasury:300,stability:-10}}]},
+{id:'coup_success',cat:'特殊',icon:'🗡️',title:'政變成功',weight:15,text:'軍方宣布接管政權，你被迫下台。',cond:s=>s.stability<15&&s.military>30,options:[
+ {label:'接受現實',desc:'遊戲結束',effect:{gameover:true}}]},
+];
+
+/* ============================================================
+   四、狀態
+============================================================ */
+let S=null;
+let selGov=0, selFlag=0;
+let pendingEvent=null;
+let ctx=null, canvas=null, mmCanvas=null, mmCtx=null;
+let selected=null;
+const camera={x:0,y:0,zoom:1};
+let isDragging=false, dragStart=null, dragMoved=false;
+
+/* ============================================================
+   五、地圖幾何
+============================================================ */
+function tileIndex(c,r){return r*MAP_W+c}
+function getTile(c,r){return S.tiles[tileIndex(c,r)]}
+function hexCenter(c,r){return [c*HEX_W+(r&1?HEX_W/2:0)+HEX_W/2, r*1.5*HEX+HEX]}
+function hexDistance(c1,r1,c2,r2){
+  const ax=c1-(r1-(r1&1))/2, az=r1, ay=-ax-az;
+  const bx=c2-(r2-(r2&1))/2, bz=r2, by=-bx-bz;
+  return Math.max(Math.abs(ax-bx),Math.abs(ay-by),Math.abs(az-bz));
+}
+function neighbors(c,r){
+  const odd=r&1;
+  const dirs=odd?[[1,0],[-1,0],[0,-1],[1,-1],[0,1],[1,1]]
+                :[[1,0],[-1,0],[-1,-1],[0,-1],[-1,1],[0,1]];
+  const out=[];
+  for(const [dc,dr] of dirs){
+    const nc=c+dc,nr=r+dr;
+    if(nc>=0&&nc<MAP_W&&nr>=0&&nr<MAP_H) out.push([nc,nr]);
+  }
+  return out;
+}
+function hexPath(cx,cy,size){
+  ctx.beginPath();
+  for(let i=0;i<6;i++){
+    const ang=Math.PI/180*(60*i-30);
+    const x=cx+size*Math.cos(ang),y=cy+size*Math.sin(ang);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+}
+
+/* ============================================================
+   六、地圖生成（含河流、城市、資源）
+============================================================ */
+function generateMap(){
+  const noise1=makeNoise(11111), noise2=makeNoise(22222), noise3=makeNoise(33333);
+  const tiles=[];
+  // 1. 地形
+  for(let r=0;r<MAP_H;r++){
+    for(let c=0;c<MAP_W;c++){
+      const nx=c/(MAP_W-1), ny=r/(MAP_H-1);
+      const edge=Math.min(nx,1-nx,ny,1-ny)*2;
+      const edgeFactor=Math.min(1,edge*3.8);
+      let elev=noise1(c*0.07,r*0.07)*0.72+noise1(c*0.16+30,r*0.16+30)*0.28;
+      elev=elev*edgeFactor-0.07;
+      const moist=noise2(c*0.085+50,r*0.085+50);
+      const latTemp=Math.abs(ny-0.5)*2; // 0 赤道，1 两极
+      let temp=1-latTemp*1.15+noise3(c*0.06,r*0.06)*0.35-0.1;
+      let terrain;
+      if(elev<0.22) terrain='deep';
+      else if(elev<0.30) terrain='water';
+      else if(elev<0.34) terrain='coast';
+      else if(temp<0.12&&elev>0.55) terrain='snow';
+      else if(temp<0.22) terrain='tundra';
+      else if(elev>0.78) terrain='volcanic';
+      else if(elev>0.68) terrain='mountain';
+      else if(moist<0.28&&temp>0.6) terrain='desert';
+      else if(moist>0.68&&temp>0.55) terrain='rainforest';
+      else if(moist>0.58) terrain='forest';
+      else if(elev>0.48) terrain='hills';
+      else if(moist<0.4) terrain='grass';
+      else if(moist>0.72&&elev<0.4) terrain='swamp';
+      else terrain='plains';
+      const t=TERRAIN[terrain];
+      const pop=t.pop>0?(t.pop*(0.7+Math.random()*0.6)):0;
+      tiles.push({col:c,row:r,terrain,elevation:elev,owner:null,pop,dev:Math.random()*0.6,resource:null,city:null,hasRiver:false,buildings:{},fort:0});
+    }
+  }
+  // 2. 河流
+  const highTiles=tiles.filter(t=>['mountain','hills','snow','volcanic'].includes(t.terrain)&&t.elevation>0.55);
+  for(let i=0;i<28;i++){
+    if(!highTiles.length) break;
+    let cur=highTiles[Math.floor(Math.random()*highTiles.length)];
+    const visited=new Set();
+    for(let step=0;step<45;step++){
+      const key=cur.col+','+cur.row;
+      if(visited.has(key)) break;
+      visited.add(key);
+      cur.hasRiver=true;
+      const nbs=neighbors(cur.col,cur.row).map(([c,r])=>getTile(c,r));
+      if(nbs.some(n=>['deep','water','coast'].includes(n.terrain))) break;
+      let lowest=null,lowElev=cur.elevation;
+      for(const n of nbs){
+        if(n.elevation<lowElev){lowElev=n.elevation;lowest=n;}
+      }
+      if(!lowest) break;
+      cur=lowest;
+    }
+  }
+  // 3. 資源
+  const resPool={
+    plains:['grain','grain','horse'],grass:['grain','horse','horse'],
+    forest:['wood','wood','grain'],rainforest:['wood','gem','gem'],
+    hills:['iron','coal','gem'],mountain:['iron','coal','gold'],
+    desert:['oil','oil','gold'],volcanic:['gold','gem','oil'],
+    snow:['fish','coal'],tundra:['wood','fish'],swamp:['wood','oil'],coast:['fish','fish','oil'],
+  };
+  for(const t of tiles){
+    const pool=resPool[t.terrain];
+    if(pool&&Math.random()<0.42) t.resource=pool[Math.floor(Math.random()*pool.length)];
+  }
+  // 4. 國家分配（Voronoi）
+  for(const t of tiles){
+    if(['deep','water'].includes(t.terrain)) continue;
+    let best=null,bestD=Infinity;
+    for(const s of SEEDS){
+      const d=hexDistance(t.col,t.row,s.c,s.r)*s.w;
+      if(d<bestD){bestD=d;best=s.id;}
+    }
+    t.owner=best;
+  }
+  // 5. 城市生成（每個國家區域 2-4 個）
+  let cityIdx=0;
+  const byOwner={};
+  for(const t of tiles){
+    if(!t.owner) continue;
+    if(!byOwner[t.owner]) byOwner[t.owner]=[];
+    byOwner[t.owner].push(t);
+  }
+  for(const [owner,list] of Object.entries(byOwner)){
+    const count=2+Math.floor(Math.random()*3);
+    // 偏好有河流、海岸、平原的地塊
+    const candidates=list.filter(t=>['plains','grass','coast','forest'].includes(t.terrain));
+    for(let i=0;i<count&&candidates.length;i++){
+      const idx=Math.floor(Math.random()*candidates.length);
+      const t=candidates[idx];
+      if(t.city) continue;
+      const cname=CITIES[cityIdx%CITIES.length];
+      cityIdx++;
+      t.city={name:cname.name,level:cname.type};
+      t.pop+=cname.type==='city'?3:cname.type==='town'?1.5:0.8;
+    }
+  }
+  return tiles;
+}
+
+/* ============================================================
+   七、繪製
+============================================================ */
+function drawTile(t){
+  const [cx,cy]=hexCenter(t.col,t.row);
+  const tr=TERRAIN[t.terrain];
+  // 海拔色差
+  const elevAdj=Math.round((t.elevation-0.5)*18);
+  let baseColor=shade(tr.color,elevAdj);
+  hexPath(cx,cy,HEX-0.4);
+  ctx.fillStyle=baseColor;
+  ctx.fill();
+  // 归属色
+  if(t.owner){
+    const col=OWNERS[t.owner].color;
+    const alpha=t.owner==='player'?0.28:0.30;
+    ctx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},${alpha})`;
+    ctx.fill();
+  }
+  // 地形装饰（缩放足够大才绘制）
+  if(camera.zoom>0.8){
+    if(t.terrain==='forest'||t.terrain==='rainforest'){
+      ctx.fillStyle='rgba(0,0,0,0.22)';
+      ctx.beginPath();ctx.arc(cx-2,cy-2,1.4,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(cx+2,cy+1,1.2,0,Math.PI*2);ctx.fill();
+    }else if(t.terrain==='mountain'||t.terrain==='volcanic'){
+      ctx.fillStyle='rgba(255,255,255,0.35)';
+      ctx.beginPath();ctx.moveTo(cx,cy-3);ctx.lineTo(cx-2.5,cy+1);ctx.lineTo(cx+2.5,cy+1);ctx.closePath();ctx.fill();
+    }else if(t.terrain==='desert'){
+      ctx.strokeStyle='rgba(0,0,0,0.18)';ctx.lineWidth=0.6;
+      ctx.beginPath();ctx.moveTo(cx-3,cy);ctx.lineTo(cx+3,cy);ctx.stroke();
+    }else if(t.terrain==='snow'){
+      ctx.fillStyle='rgba(255,255,255,0.5)';
+      ctx.beginPath();ctx.arc(cx,cy,1.2,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // 河流
+  if(t.hasRiver&&camera.zoom>0.6){
+    ctx.strokeStyle='rgba(90,170,230,0.85)';
+    ctx.lineWidth=Math.max(1,HEX*0.18);
+    ctx.beginPath();
+    const nb=neighbors(t.col,t.row).filter(([c,r])=>getTile(c,r).hasRiver);
+    if(nb.length){
+      const [nc,nr]=nb[0];
+      const [nx,ny]=hexCenter(nc,nr);
+      ctx.moveTo(cx,cy);ctx.lineTo(nx,ny);
+    }else{
+      ctx.moveTo(cx-3,cy);ctx.lineTo(cx+3,cy);
+    }
+    ctx.stroke();
+  }
+  // 資源
+  if(t.resource&&camera.zoom>0.9){
+    const icons={grain:'🌾',iron:'⛏️',coal:'⚫',oil:'🛢️',gold:'💰',gem:'💎',wood:'🪵',fish:'🐟',horse:'🐎'};
+    ctx.font='7px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(icons[t.resource]||'',cx+3,cy+3);
+  }
+  // 城市
+  if(t.city){
+    const sz=t.city.level==='city'?3.5:t.city.level==='town'?2.5:1.8;
+    ctx.fillStyle='#f5e6c8';
+    ctx.strokeStyle='#1a1200';
+    ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.arc(cx,cy,sz,0,Math.PI*2);ctx.fill();ctx.stroke();
+    if(camera.zoom>1.2){
+      ctx.font='bold 6px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='#1a1200';
+      ctx.fillText(t.city.name,cx,cy-sz-4);
+    }
+  }
+  // 建筑
+  if(Object.keys(t.buildings).length&&camera.zoom>1.0){
+    const blds=Object.keys(t.buildings);
+    const icons={farm:'🌾',mine:'⛏️',factory:'🏭',port:'⚓',fort:'🏰',road:'🛣️'};
+    ctx.font='7px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(icons[blds[0]]||'',cx-3,cy-3);
+  }
+}
+
+function renderMap(){
+  if(!ctx) return;
+  canvas.width=canvas.clientWidth;
+  canvas.height=canvas.clientHeight;
+  const W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#050a12';
+  ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+  ctx.translate(camera.x,camera.y);
+  ctx.scale(camera.zoom,camera.zoom);
+
+  const viewLeft=-camera.x/camera.zoom;
+  const viewTop=-camera.y/camera.zoom;
+  const viewRight=viewLeft+W/camera.zoom;
+  const viewBottom=viewTop+H/camera.zoom;
+
+  // 绘制可见地块
+  for(const t of S.tiles){
+    const [cx,cy]=hexCenter(t.col,t.row);
+    if(cx<viewLeft-HEX||cx>viewRight+HEX||cy<viewTop-HEX||cy>viewBottom+HEX) continue;
+    drawTile(t);
+  }
+
+  // 边界（只对可见地块）
+  for(const t of S.tiles){
+    const [cx,cy]=hexCenter(t.col,t.row);
+    if(cx<viewLeft-HEX||cx>viewRight+HEX||cy<viewTop-HEX||cy>viewBottom+HEX) continue;
+    if(!t.owner) continue;
+    const col=OWNERS[t.owner].color;
+    for(const [nc,nr] of neighbors(t.col,t.row)){
+      const nb=getTile(nc,nr);
+      if(nb.owner!==t.owner){
+        const [nx,ny]=hexCenter(nc,nr);
+        const ang=Math.atan2(ny-cy,nx-cx);
+        const x1=cx+Math.cos(ang-0.5)*HEX*0.9,y1=cy+Math.sin(ang-0.5)*HEX*0.9;
+        const x2=cx+Math.cos(ang+0.5)*HEX*0.9,y2=cy+Math.sin(ang+0.5)*HEX*0.9;
+        ctx.strokeStyle=t.owner==='player'?'#f5c74a':`rgba(${col[0]},${col[1]},${col[2]},0.8)`;
+        ctx.lineWidth=t.owner==='player'?1.8:1.0;
+        ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      }
+    }
+  }
+
+  // 选中高亮
+  if(selected){
+    const [cx,cy]=hexCenter(selected.col,selected.row);
+    hexPath(cx,cy,HEX-1);
+    ctx.strokeStyle='#ffffff';
+    ctx.lineWidth=2.2;
+    ctx.stroke();
+  }
+
+  // 国家标签
+  const groups={};
+  for(const t of S.tiles){
+    if(!t.owner) continue;
+    const [cx,cy]=hexCenter(t.col,t.row);
+    if(!groups[t.owner]) groups[t.owner]={x:0,y:0,n:0};
+    groups[t.owner].x+=cx; groups[t.owner].y+=cy; groups[t.owner].n++;
+  }
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  for(const [id,g] of Object.entries(groups)){
+    const cx=g.x/g.n,cy=g.y/g.n;
+    if(cx<viewLeft-100||cx>viewRight+100||cy<viewTop-50||cy>viewBottom+50) continue;
+    const label=OWNERS[id].name;
+    const fontSize=Math.max(10,Math.min(20,14/camera.zoom));
+    ctx.font=`bold ${fontSize}px "PingFang TC","Microsoft JhengHei",sans-serif`;
+    ctx.lineWidth=3;ctx.strokeStyle='rgba(0,0,0,0.8)';
+    ctx.strokeText(label,cx,cy);
+    ctx.fillStyle=id==='player'?'#ffd75e':'#e8eef8';
+    ctx.fillText(label,cx,cy);
+  }
+
+  ctx.restore();
+  drawMinimap();
+}
+
+function drawMinimap(){
+  if(!mmCtx) return;
+  const W=mmCanvas.width,H=mmCanvas.height;
+  mmCtx.clearRect(0,0,W,H);
+  mmCtx.fillStyle='#050a12';
+  mmCtx.fillRect(0,0,W,H);
+  const px=W/MAP_W,py=H/MAP_H;
+  for(const t of S.tiles){
+    if(t.owner){
+      const c=OWNERS[t.owner].color;
+      mmCtx.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`;
+    }else{
+      const tr=TERRAIN[t.terrain];
+      mmCtx.fillStyle=tr.color;
+    }
+    mmCtx.fillRect(t.col*px,t.row*py,px+0.6,py+0.6);
+  }
+  // 视口矩形
+  const viewLeft=-camera.x/camera.zoom;
+  const viewTop=-camera.y/camera.zoom;
+  const viewW=canvas.clientWidth/camera.zoom;
+  const viewH=canvas.clientHeight/camera.zoom;
+  mmCtx.strokeStyle='#ffffff';
+  mmCtx.lineWidth=1.5;
+  mmCtx.strokeRect(
+    viewLeft/CANVAS_W*W,
+    viewTop/CANVAS_H*H,
+    viewW/CANVAS_W*W,
+    viewH/CANVAS_H*H
+  );
+}
+
+/* ============================================================
+   八、视角控制
+============================================================ */
+function centerMap(reset){
+  const wrap=document.getElementById('map-wrap');
+  const w=wrap.clientWidth,h=wrap.clientHeight;
+  const z=Math.min(w/CANVAS_W,h/CANVAS_H)*0.94;
+  camera.zoom=z;
+  camera.x=(w-CANVAS_W*z)/2;
+  camera.y=(h-CANVAS_H*z)/2;
+  document.getElementById('zoom-label').textContent=Math.round(z*100)+'%';
+  renderMap();
+}
+function zoomBy(factor){
+  const wrap=document.getElementById('map-wrap');
+  const sx=wrap.clientWidth/2,sy=wrap.clientHeight/2;
+  const worldX=(sx-camera.x)/camera.zoom;
+  const worldY=(sy-camera.y)/camera.zoom;
+  camera.zoom=clamp(camera.zoom*factor,0.35,4);
+  camera.x=sx-worldX*camera.zoom;
+  camera.y=sy-worldY*camera.zoom;
+  document.getElementById('zoom-label').textContent=Math.round(camera.zoom*100)+'%';
+  renderMap();
+}
+
+/* ============================================================
+   九、建立國家畫面
+============================================================ */
+function buildSetup(){
+  document.getElementById('gov-grid').innerHTML=GOVS.map((g,i)=>`
+    <div class="gov-card ${i===selGov?'sel':''}" onclick="pickGov(${i})">
+      <div class="gov-icon">${g.icon}</div>
+      <div class="gov-name">${g.name}</div>
+      <div class="gov-desc">${g.desc}</div>
+    </div>`).join('');
+  document.getElementById('color-row').innerHTML=FLAGS.map((f,i)=>`
+    <div class="flag-opt ${i===selFlag?'sel':''}" onclick="pickFlag(${i})">${flagHTML(f,34)}</div>`).join('');
+  document.getElementById('flag-preview').innerHTML=flagHTML(FLAGS[selFlag],96);
+}
+function pickGov(i){selGov=i;document.querySelectorAll('#gov-grid .gov-card').forEach((el,idx)=>el.classList.toggle('sel',idx===i));}
+function pickFlag(i){selFlag=i;document.querySelectorAll('.flag-opt').forEach((el,idx)=>el.classList.toggle('sel',idx===i));document.getElementById('flag-preview').innerHTML=flagHTML(FLAGS[i],96);}
+
+/* ============================================================
+   十、開始遊戲
+============================================================ */
+function startGame(){
+  const name=document.getElementById('in-name').value.trim()||'無名國';
+  S={
+    country:name,gov:GOVS[selGov],flagColors:FLAGS[selFlag],
+    year:1,month:1,turn:0,season:0,
+    treasury:2000,population:0,stability:65,military:20,tech:10,infra:10,
+    prestige:50,taxRate:25,education:10,healthcare:10,corruption:20,
+    energy:10,inflation:20,happiness:60,
+    nations:NATIONS_BASE.map(n=>({...n,trade:false})),
+    log:[],gameOver:false,
+  };
+  S.tiles=generateMap();
+  let p=0;
+  for(const t of S.tiles) if(t.owner==='player') p+=t.pop;
+  S.population=Math.max(10,Math.round(p*1.1));
+  applyEffect(S.gov.bonus);
+  addLog(`【${S.country}】正式建國，${S.gov.name}開始執政，坐擁 ${countTiles('player')} 塊領土、${countCities('player')} 座城市。`,'good');
+
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+
+  canvas=document.getElementById('map-canvas');
+  ctx=canvas.getContext('2d');
+  mmCanvas=document.getElementById('minimap');
+  mmCtx=mmCanvas.getContext('2d');
+
+  // 事件绑定
+  canvas.addEventListener('mousedown',onMapDown);
+  window.addEventListener('mousemove',onMapMove);
+  window.addEventListener('mouseup',onMapUp);
+  canvas.addEventListener('wheel',onMapWheel,{passive:false});
+  mmCanvas.addEventListener('click',onMinimapClick);
+  window.addEventListener('resize',()=>{if(S)renderMap();});
+
+  buildLegend();
+  centerMap(true);
+  render();
+  setTab('map');
+}
+
+function buildLegend(){
+  document.getElementById('legend').innerHTML=
+    Object.entries(OWNERS).map(([id,o])=>{
+      const c=o.color;
+      return `<span><i style="background:rgb(${c[0]},${c[1]},${c[2]})"></i>${o.name}</span>`;
+    }).join('');
+}
+
+function countTiles(owner){return S.tiles.filter(t=>t.owner===owner).length}
+function countCities(owner){return S.tiles.filter(t=>t.owner===owner&&t.city).length}
+
+/* ============================================================
+   十一、地圖互動
+============================================================ */
+function onMapDown(e){
+  isDragging=true;dragMoved=false;
+  dragStart={x:e.clientX,y:e.clientY,camX:camera.x,camY:camera.y};
+}
+function onMapMove(e){
+  if(!isDragging||!dragStart) return;
+  const dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;
+  if(Math.abs(dx)>3||Math.abs(dy)>3) dragMoved=true;
+  camera.x=dragStart.camX+dx;
+  camera.y=dragStart.camY+dy;
+  renderMap();
+}
+function onMapUp(e){
+  if(!isDragging) return;
+  isDragging=false;
+  if(!dragMoved){
+    // 点击
+    handleMapClick(e);
+  }
+  dragStart=null;
+}
+function onMapWheel(e){
+  e.preventDefault();
+  const rect=canvas.getBoundingClientRect();
+  const sx=e.clientX-rect.left,sy=e.clientY-rect.top;
+  const factor=e.deltaY<0?1.15:1/1.15;
+  const worldX=(sx-camera.x)/camera.zoom;
+  const worldY=(sy-camera.y)/camera.zoom;
+  camera.zoom=clamp(camera.zoom*factor,0.35,4);
+  camera.x=sx-worldX*camera.zoom;
+  camera.y=sy-worldY*camera.zoom;
+  document.getElementById('zoom-label').textContent=Math.round(camera.zoom*100)+'%';
+  renderMap();
+}
+
+function handleMapClick(e){
+  const rect=canvas.getBoundingClientRect();
+  const sx=e.clientX-rect.left,sy=e.clientY-rect.top;
+  const wx=(sx-camera.x)/camera.zoom;
+  const wy=(sy-camera.y)/camera.zoom;
+  const rowEst=Math.round(wy/(1.5*HEX));
+  let best=null,bestD=Infinity;
+  for(let r=rowEst-2;r<=rowEst+2;r++){
+    if(r<0||r>=MAP_H) continue;
+    const off=(r&1)?HEX_W/2:0;
+    const cEst=Math.round((wx-off-HEX_W/2)/HEX_W);
+    for(let c=cEst-1;c<=cEst+1;c++){
+      if(c<0||c>=MAP_W) continue;
+      const [cx,cy]=hexCenter(c,r);
+      const d=Math.hypot(wx-cx,wy-cy);
+      if(d<bestD){bestD=d;best={col:c,row:r}}
+    }
+  }
+  if(best&&bestD<=HEX*1.1){
+    selected=best;
+    renderMap();
+    renderProvincePanel();
+  }
+}
+
+function onMinimapClick(e){
+  const rect=mmCanvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)/rect.width;
+  const y=(e.clientY-rect.top)/rect.height;
+  const wx=x*CANVAS_W, wy=y*CANVAS_H;
+  const wrap=document.getElementById('map-wrap');
+  camera.x=wrap.clientWidth/2-wx*camera.zoom;
+  camera.y=wrap.clientHeight/2-wy*camera.zoom;
+  renderMap();
+}
+
+/* ============================================================
+   十二、省面板
+============================================================ */
+function renderProvincePanel(){
+  const el=document.getElementById('prov-panel');
+  if(!selected){el.innerHTML='<div class="hint">點擊地圖上任何格子查看詳情。<br><br>我方領土：開發・建造<br>敵方領土：進攻</div>';return}
+  const t=getTile(selected.col,selected.row);
+  const tr=TERRAIN[t.terrain];
+  const ownerName=t.owner?OWNERS[t.owner].name:'無主之地';
+  const ownerTag=t.owner==='player'?'<span class="tag player">我方</span>':
+                 t.owner?`<span class="tag enemy">敵方</span>`:'';
+  const adjPlayer=neighbors(t.col,t.row).some(([c,r])=>getTile(c,r).owner==='player');
+  const canAttack=t.owner&&t.owner!=='player'&&adjPlayer;
+  const canDevelop=t.owner==='player';
+  const resNames={grain:'糧食',iron:'鐵礦',coal:'煤礦',oil:'石油',gold:'黃金',gem:'寶石',wood:'木材',fish:'漁業',horse:'馬匹'};
+
+  let actions='';
+  if(canDevelop){
+    actions=`<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn mini" onclick="developTile()">🏗️ 開發（100）</button>
+      <button class="btn mini" onclick="openBuildMenu()">🏛️ 建造</button>
+    </div>`;
+  }else if(canAttack){
+    const enemy=S.nations.find(n=>n.id===t.owner);
+    const enemyPower=(enemy?enemy.power*0.45:20)+tr.defense*3+t.fort*5;
+    const myPower=S.military;
+    const chance=Math.round(myPower/(myPower+enemyPower)*100);
+    actions=`<button class="btn mini" style="margin-top:10px" onclick="attackTile()">⚔️ 進攻（150，成功率約 ${chance}%）</button>`;
+  }else if(t.owner&&t.owner!=='player'){
+    actions=`<div class="hint">需與我方領土相鄰才能進攻。</div>`;
+  }
+
+  el.innerHTML=`
+    <div class="prov-title">📍 (${t.col}, ${t.row})${ownerTag}</div>
+    <div class="prov-row"><span>地形</span><span>${tr.name}</span></div>
+    <div class="prov-row"><span>歸屬</span><span>${ownerName}</span></div>
+    <div class="prov-row"><span>人口</span><span>${t.pop.toFixed(2)} 百萬</span></div>
+    <div class="prov-row"><span>開發度</span><span>${(t.dev*100).toFixed(0)}%</span></div>
+    <div class="prov-row"><span>糧食</span><span>${tr.food}</span></div>
+    <div class="prov-row"><span>礦產</span><span>${tr.mineral}</span></div>
+    <div class="prov-row"><span>能源</span><span>${tr.energy}</span></div>
+    <div class="prov-row"><span>防禦</span><span>+${tr.defense+t.fort*5}</span></div>
+    ${t.resource?`<div class="prov-row"><span>資源</span><span>${resNames[t.resource]||t.resource}</span></div>`:''}
+    ${t.hasRiver?`<div class="prov-row"><span>河流</span><span>✓</span></div>`:''}
+    ${t.city?`<div class="prov-row"><span>城市</span><span>${t.city.name}（${t.city.level}）</span></div>`:''}
+    ${Object.keys(t.buildings).length?`<div class="prov-row"><span>建築</span><span>${Object.keys(t.buildings).join('、')}</span></div>`:''}
+    ${actions}
+  `;
+}
+
+function developTile(){
+  const t=getTile(selected.col,selected.row);
+  if(t.owner!=='player') return;
+  if(S.treasury<100) return;
+  S.treasury-=100;
+  t.dev=Math.min(3,t.dev+0.25);
+  t.pop*=1.03;
+  S.population*=1.005;
+  addLog(`開發領土 (${t.col},${t.row})，花費 100`,'good');
+  render();
+}
+
+function openBuildMenu(){
+  const t=getTile(selected.col,selected.row);
+  if(t.owner!=='player') return;
+  let opts='';
+  for(const [id,b] of Object.entries(BUILDINGS)){
+    if(t.buildings[id]) continue;
+    if(b.req.terrain&&!b.req.terrain.includes(t.terrain)) continue;
+    const can=S.treasury>=b.cost;
+    opts+=`<button class="ev-opt" ${can?'':'disabled'} onclick="buildTile('${id}')">
+      <b>${b.icon} ${b.name}（${b.cost}）</b>
+      <span>${Object.entries(b.effect).map(([k,v])=>`${k}+${v}`).join('・')}</span>
+    </button>`;
+  }
+  if(!opts) opts='<div class="hint">此地形無可建造建築。</div>';
+  document.getElementById('ev-icon').textContent='🏛️';
+  document.getElementById('ev-title').textContent='建造建築';
+  document.getElementById('ev-text').textContent='選擇要建造的建築：';
+  document.getElementById('ev-options').innerHTML=opts+
+    `<button class="ev-opt" onclick="closeModal()"><b>取消</b></button>`;
+  document.getElementById('event-modal').classList.remove('hidden');
+  pendingEvent={type:'build'};
+}
+
+function buildTile(id){
+  const t=getTile(selected.col,selected.row);
+  const b=BUILDINGS[id];
+  if(!b||t.owner!=='player'||t.buildings[id]||S.treasury<b.cost) return;
+  S.treasury-=b.cost;
+  t.buildings[id]=true;
+  if(b.effect.defense) t.fort+=b.effect.defense;
+  addLog(`在 (${t.col},${t.row}) 建造【${b.name}】，花費 ${b.cost}`,'good');
+  closeModal();
+  render();
+}
+
+function closeModal(){
+  document.getElementById('event-modal').classList.add('hidden');
+  pendingEvent=null;
+}
+
+function attackTile(){
+  const t=getTile(selected.col,selected.row);
+  if(!t.owner||t.owner==='player') return;
+  if(!neighbors(t.col,t.row).some(([c,r])=>getTile(c,r).owner==='player')){
+    addLog('必須與我方領土相鄰才能進攻。','bad');render();return;
+  }
+  if(S.treasury<150){addLog('資金不足，無法發動進攻。','bad');render();return}
+  const enemy=S.nations.find(n=>n.id===t.owner);
+  const enemyPower=(enemy?enemy.power*0.45:20)+TERRAIN[t.terrain].defense*3+t.fort*5;
+  const myPower=S.military;
+  const winChance=myPower/(myPower+enemyPower);
+
+  S.treasury-=150;
+  S.military-=3;
+
+  if(Math.random()<winChance){
+    t.owner='player';
+    t.pop*=0.8;
+    t.dev*=0.7;
+    if(enemy){enemy.power*=0.97;enemy.relation=clamp(enemy.relation-15,-100,100)}
+    S.prestige=clamp(S.prestige+3,0,100);
+    S.stability=clamp(S.stability-1,0,100);
+    S.population+=t.pop*0.8;
+    addLog(`成功佔領 (${t.col},${t.row}) 的領土！`,'good');
+  }else{
+    S.military-=3;
+    S.stability=clamp(S.stability-2,0,100);
+    if(enemy) enemy.relation=clamp(enemy.relation-8,-100,100);
+    addLog(`進攻 (${t.col},${t.row}) 失敗，損失兵力。`,'bad');
+  }
+  if(S.military<0) S.military=0;
+  render();
+}
+
+/* ============================================================
+   十三、回合
+============================================================ */
+const SEASONS=['春','夏','秋','冬'];
+
+function nextTurn(){
+  if(!S||S.gameOver||pendingEvent) return;
+
+  const income=calcIncome();
+  const expenses=calcExpenses();
+  const net=income-expenses;
+  S.treasury+=net;
+  S.turn++;
+  S.month++;
+  if(S.month>12){S.month=1;S.year++}
+  S.season=Math.floor((S.month-1)/3);
+
+  // 季节影响
+  const seasonMod=[1.1,1.15,0.95,0.75][S.season];
+  S.treasury+=Math.round((seasonMod-1)*income*0.3);
+
+  // 稳定度
+  let d=-0.4;
+  if(S.taxRate>35) d-=(S.taxRate-35)*0.2;
+  if(S.taxRate<12) d+=(12-S.taxRate)*0.15;
+  if(S.treasury<0) d-=2.5;
+  if(S.inflation>60) d-=1.5;
+  if(S.corruption>60) d-=1.0;
+  if(S.happiness>70) d+=0.4;
+  S.stability=clamp(S.stability+d,0,100);
+
+  S.inflation=clamp(S.inflation*0.97,0,100);
+  S.corruption=clamp(S.corruption+0.3,0,100);
+
+  const growth=S.population*(0.0022+(S.stability-50)/9000+(S.healthcare-30)/12000);
+  S.population=Math.max(5,S.population+growth);
+
+  S.tech+=S.tech*0.002+S.education*0.0008;
+  S.military=Math.max(0,S.military*0.995);
+
+  // AI 国家
+  for(const n of S.nations){
+    n.power=clamp(n.power+(Math.random()-0.5)*2.5,10,150);
+    n.relation=clamp(n.relation+(Math.random()-0.5)*2,-100,100);
+  }
+
+  maybeAIAttack();
+  addLog(`收支結算：收入 +${fmt(income)}，支出 -${fmt(expenses)}，淨值 ${net>=0?'+':''}${fmt(net)}`,net>=0?'money':'bad');
+
+  if(countTiles('player')===0){
+    S.gameOver=true;
+    showEnd('🏳️','亡國','你失去了所有領土，國家被鄰國瓜分殆盡。');
+    render();return;
+  }
+  if(S.stability<=0){
+    S.gameOver=true;
+    showEnd('🔥','政權崩潰','穩定度歸零，民眾發動革命，你的政權被徹底推翻。');
+    render();return;
+  }
+  if(S.treasury<-3000){
+    S.gameOver=true;
+    showEnd('💸','國家破產','國庫空虛到無法運作，公務員領不到薪水，軍隊解散。');
+    render();return;
+  }
+
+  if(Math.random()<0.42) triggerRandomEvent();
+  render();
+}
+
+function maybeAIAttack(){
+  if(S.military>60) return;
+  const hostile=S.nations.filter(n=>n.relation<-40);
+  if(!hostile.length) return;
+  if(Math.random()>0.16) return;
+  const mine=S.tiles.filter(t=>t.owner==='player');
+  const border=mine.filter(t=>neighbors(t.col,t.row).some(([c,r])=>{
+    const nb=getTile(c,r);
+    return nb.owner&&nb.owner!=='player';
+  }));
+  if(!border.length) return;
+  const target=border[Math.floor(Math.random()*border.length)];
+  target.owner=null;
+  S.stability-=4;
+  S.military-=2;
+  addLog(`敵國趁虛而入，奪走了你的一塊領土！`,'bad');
+}
+
+/* ============================================================
+   十四、事件
+============================================================ */
+function triggerRandomEvent(){
+  const pool=EVENTS.filter(e=>!e.cond||e.cond(S));
+  if(!pool.length) return;
+  const total=pool.reduce((a,e)=>a+e.weight,0);
+  let roll=Math.random()*total;
+  let ev=pool[0];
+  for(const e of pool){roll-=e.weight;if(roll<=0){ev=e;break}}
+  showEvent(ev);
+}
+function showEvent(ev){
+  pendingEvent=ev;
+  document.getElementById('ev-icon').textContent=ev.icon;
+  document.getElementById('ev-title').textContent=ev.title;
+  document.getElementById('ev-text').textContent=ev.text;
+  document.getElementById('ev-options').innerHTML=ev.options.map((o,i)=>`
+    <button class="ev-opt" onclick="chooseEvent(${i})">
+      <b>${o.label}</b><span>${o.desc||''}</span>
+    </button>`).join('');
+  document.getElementById('event-modal').classList.remove('hidden');
+}
+function chooseEvent(i){
+  const ev=pendingEvent;
+  if(!ev) return;
+  const opt=ev.options[i];
+  if(opt.tax) S.taxRate=clamp(S.taxRate+opt.tax,0,60);
+  applyEffect(opt.effect);
+  addLog(`【${ev.title}】選擇「${opt.label}」`,'bad');
+  document.getElementById('event-modal').classList.add('hidden');
+  pendingEvent=null;
+  if(S.gameOver) showEnd('💥','政權終結','歷史的洪流將你吞沒。');
+  render();
+}
+function showEnd(icon,title,text){
+  document.getElementById('end-icon').textContent=icon;
+  document.getElementById('end-title').textContent=title;
+  document.getElementById('end-text').textContent=text;
+  document.getElementById('end-modal').classList.remove('hidden');
+}
+
+/* ============================================================
+   十五、數值
+============================================================ */
+function calcIncome(){
+  let base=0;
+  for(const t of S.tiles){
+    if(t.owner!=='player') continue;
+    const tr=TERRAIN[t.terrain];
+    base+=tr.food*1.0+tr.mineral*1.1+tr.energy*1.3;
+    base+=t.pop*1.1+t.dev*1.8;
+    if(t.hasRiver) base+=1.5;
+    if(t.resource) base+=2.0;
+    for(const bid of Object.keys(t.buildings)){
+      const b=BUILDINGS[bid];
+      if(b.effect.income) base+=b.effect.income*0.25;
+    }
+  }
+  const partners=S.nations.filter(n=>n.trade).length;
+  return Math.round(base*(0.45+S.taxRate/55)*(1+S.tech/70)*(1+partners*0.04));
+}
+function calcExpenses(){
+  return Math.round(
+    S.military*1.6+S.population*0.35+S.tech*0.6+S.infra*0.5+S.healthcare*0.3
+  );
+}
+function investCost(base){return Math.round(base*(1+S.population/100))}
+
+function applyEffect(effect){
+  if(!effect) return;
+  for(const [k,v] of Object.entries(effect)){
+    if(k==='relation'){S.nations.forEach(n=>n.relation=clamp(n.relation+v,-100,100));}
+    else if(k==='territory'){loseTerritory(Math.abs(v));}
+    else if(k==='gameover'){S.gameOver=true;}
+    else if(k in S){S[k]+=v;}
+  }
+  S.stability=clamp(S.stability,0,100);
+  S.prestige=clamp(S.prestige,0,100);
+  S.happiness=clamp(S.happiness,0,100);
+  S.education=clamp(S.education,0,100);
+  S.healthcare=clamp(S.healthcare,0,100);
+  S.corruption=clamp(S.corruption,0,100);
+  S.energy=clamp(S.energy,0,100);
+  S.inflation=clamp(S.inflation,0,100);
+  S.military=Math.max(0,S.military);
+  S.tech=Math.max(0,S.tech);
+  S.infra=Math.max(0,S.infra);
+  S.population=Math.max(5,S.population);
+  S.taxRate=clamp(S.taxRate,0,60);
+  S.treasury=Math.round(S.treasury);
+}
+function loseTerritory(n){
+  const mine=S.tiles.filter(t=>t.owner==='player');
+  for(let i=0;i<n&&mine.length;i++){
+    const idx=Math.floor(Math.random()*mine.length);
+    const t=mine[idx];
+    t.owner=null;
+    S.population=Math.max(5,S.population-t.pop*1.1);
+    mine.splice(idx,1);
+  }
+}
+
+/* ============================================================
+   十六、玩家行动
+============================================================ */
+function invest(id){
+  const inv=INVESTMENTS.find(x=>x.id===id);
+  if(!inv) return;
+  const cost=investCost(inv.cost);
+  if(S.treasury<cost) return;
+  S.treasury-=cost;
+  applyEffect(inv.effect);
+  addLog(`執行【${inv.name}】，花費 ${fmt(cost)}`,'good');
+  render();
+}
+function milAction(id){
+  const a=MIL_ACTIONS.find(x=>x.id===id);
+  if(!a) return;
+  if(a.cost>0&&S.treasury<a.cost) return;
+  if(a.cost<0) S.treasury+=-a.cost;
+  else S.treasury-=a.cost;
+  applyEffect(a.effect);
+  addLog(`執行【${a.name}】，${a.cost<0?'獲得 '+fmt(-a.cost):'花費 '+fmt(a.cost)}`,'good');
+  render();
+}
+function diplo(i,action){
+  const n=S.nations[i];
+  const conf={
+    aid:{cost:400,rel:12,prestige:0},culture:{cost:200,rel:6,prestige:2},
+    drill:{cost:300,rel:8,prestige:3,needMil:25},trade:{cost:300,rel:10,prestige:2,needRel:50},
+    condemn:{cost:0,rel:-25,prestige:1,stability:2},
+  }[action];
+  if(!conf) return;
+  if(action==='trade'){
+    if(n.trade){addLog(`與${n.name}已是貿易夥伴。`);render();return}
+    if(n.relation<conf.needRel){addLog(`與${n.name}關係不足（需 50），無法簽訂貿易協定。`,'bad');render();return}
+  }
+  if(action==='drill'&&S.military<conf.needMil){addLog(`軍力不足（需 ${conf.needMil}），無法進行聯合軍演。`,'bad');render();return}
+  if(conf.cost>0&&S.treasury<conf.cost){addLog('國庫資金不足。','bad');render();return}
+
+  S.treasury-=conf.cost;
+  n.relation=clamp(n.relation+conf.rel,-100,100);
+  if(conf.prestige) S.prestige=clamp(S.prestige+conf.prestige,0,100);
+  if(conf.stability) S.stability=clamp(S.stability+conf.stability,0,100);
+
+  let msg='';
+  switch(action){
+    case 'aid':msg=`向${n.name}提供經濟援助`;break;
+    case 'culture':msg=`與${n.name}進行文化交流`;break;
+    case 'drill':msg=`與${n.name}舉行聯合軍演`;break;
+    case 'trade':if(!n.trade){n.trade=true;msg=`與${n.name}簽訂自由貿易協定（收入 +4%）`}break;
+    case 'condemn':msg=`公開譴責${n.name}`;break;
+  }
+  if(msg) addLog(msg,'good');
+  render();
+}
+
+/* ============================================================
+   十七、UI 渲染
+============================================================ */
+function switchTab(id,btn){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  if(id==='map'){setTimeout(()=>renderMap(),10);}
+}
+function setTab(id){
+  const btn=document.querySelector(`.tabs button[data-tab="${id}"]`);
+  if(btn) switchTab(id,btn);
+}
+
+function addLog(text,type='info'){
+  if(!S) return;
+  S.log.unshift({text,type,year:S.year,month:S.month});
+  if(S.log.length>200) S.log.pop();
+}
+
+function render(){
+  if(!S) return;
+  document.getElementById('hdr-name').textContent=S.country;
+  document.getElementById('hdr-gov').textContent=S.gov.icon+' '+S.gov.name;
+  document.getElementById('hdr-date').innerHTML=`第 ${S.year} 年 ${S.month} 月<span class="season">・${SEASONS[S.season]}</span>`;
+  document.getElementById('hdr-flag').innerHTML=flagHTML(S.flagColors,44);
+  document.getElementById('btn-next').disabled=S.gameOver;
+
+  renderStats();
+  renderMap();
+  renderProvincePanel();
+  renderOverview();
+  renderDomestic();
+  renderMilitary();
+  renderDiplomacy();
+  renderLog();
+}
+
+function renderStats(){
+  const items=[
+    {icon:'💰',label:'國庫',val:fmt(S.treasury),bad:S.treasury<0},
+    {icon:'👥',label:'人口',val:S.population.toFixed(1)+'M'},
+    {icon:'🗺️',label:'領土',val:countTiles('player')},
+    {icon:'🏙️',label:'城市',val:countCities('player')},
+    {icon:'🕊️',label:'穩定',val:Math.round(S.stability),bar:S.stability,color:S.stability>60?'var(--green)':S.stability>35?'var(--gold)':'var(--red)'},
+    {icon:'⚔️',label:'軍力',val:Math.round(S.military)},
+    {icon:'🔬',label:'科技',val:Math.round(S.tech)},
+    {icon:'🏗️',label:'基建',val:Math.round(S.infra)},
+    {icon:'🏅',label:'聲望',val:Math.round(S.prestige)},
+    {icon:'💸',label:'通膨',val:Math.round(S.inflation)+'%',bad:S.inflation>60},
+    {icon:'🕵️',label:'腐敗',val:Math.round(S.corruption)+'%',bad:S.corruption>60},
+  ];
+  document.getElementById('stats').innerHTML=items.map(s=>`
+    <div class="stat">
+      <div class="stat-label">${s.icon} ${s.label}</div>
+      <div class="stat-val ${s.bad?'bad':''}">${s.val}</div>
+      ${s.bar!==undefined?`<div class="bar"><div class="bar-fill" style="width:${s.bar}%;background:${s.color}"></div></div>`:''}
+    </div>`).join('');
+}
+
+function adviceList(){
+  const tips=[];
+  if(S.treasury<200) tips.push('⚠️ 國庫吃緊，考慮提高稅率或裁減軍備。');
+  if(S.stability<40) tips.push('⚠️ 穩定度偏低，趕快投資民生或舉辦宣傳運動。');
+  if(S.taxRate>40) tips.push('💡 稅率過高會持續侵蝕穩定度，建議調降。');
+  if(S.inflation>60) tips.push('💡 通膨嚴重，可透過升息或價格管制壓低。');
+  if(S.corruption>60) tips.push('💡 腐敗嚴重，執行反腐行動可提升穩定與聲望。');
+  if(S.military<15) tips.push('💡 軍力薄弱，鄰國可能趁虛而入。');
+  if(S.nations.every(n=>!n.trade)) tips.push('💡 尚未建立任何貿易夥伴，外交還有很大空間。');
+  if(countCities('player')<3) tips.push('💡 城市數量偏少，多開發平原與海岸可增加人口。');
+  if(!tips.length) tips.push('✅ 目前國家運作良好，繼續保持！');
+  return tips.map(t=>`<div class="row"><span>${t}</span></div>`).join('');
+}
+
+function renderOverview(){
+  const income=calcIncome(),expenses=calcExpenses(),net=income-expenses;
+  const partners=S.nations.filter(n=>n.trade).map(n=>n.name).join('、')||'無';
+  const tileStats={};
+  for(const t of S.tiles){
+    if(t.owner!=='player') continue;
+    tileStats[t.terrain]=(tileStats[t.terrain]||0)+1;
+  }
+  const tileLine=Object.entries(tileStats).map(([k,v])=>`${TERRAIN[k].name} ${v}`).join('・')||'無';
+  const riverCount=S.tiles.filter(t=>t.owner==='player'&&t.hasRiver).length;
+  const resCount=S.tiles.filter(t=>t.owner==='player'&&t.resource).length;
+
+  document.getElementById('tab-overview').innerHTML=`
+    <div class="grid2">
+      <div class="card">
+        <h3>📈 財政收支（每回合）</h3>
+        <div class="row"><span>稅收收入</span><span class="pos">+${fmt(income)}</span></div>
+        <div class="row"><span>國家支出</span><span class="neg">-${fmt(expenses)}</span></div>
+        <div class="row total"><span>淨收支</span><span class="${net>=0?'pos':'neg'}">${net>=0?'+':''}${fmt(net)}</span></div>
+        <div class="hint">稅率 ${S.taxRate}%・貿易夥伴：${partners}</div>
+      </div>
+      <div class="card">
+        <h3>🏛️ 國家概況</h3>
+        <div class="row"><span>政體</span><span>${S.gov.icon} ${S.gov.name}</span></div>
+        <div class="row"><span>執政時間</span><span>${S.year} 年 ${S.month} 月（${SEASONS[S.season]}）</span></div>
+        <div class="row"><span>領土構成</span><span>${tileLine}</span></div>
+        <div class="row"><span>河流 / 資源</span><span>${riverCount} 條 / ${resCount} 處</span></div>
+        <div class="row"><span>回合數</span><span>${S.turn}</span></div>
+      </div>
+    </div>
+    <div class="card"><h3>💡 施政建議</h3>${adviceList()}</div>`;
+}
+
+function renderDomestic(){
+  document.getElementById('tab-domestic').innerHTML=`
+    <div class="card">
+      <h3>💵 稅率政策</h3>
+      <div class="slider-row">
+        <input type="range" min="0" max="60" value="${S.taxRate}" oninput="onTaxChange(this.value)">
+        <span class="tax-val" id="tax-val">${S.taxRate}%</span>
+      </div>
+      <div class="hint" id="tax-hint">預估稅收：${fmt(calcIncome())}／回合</div>
+      <div class="warn">稅率超過 35% 會持續降低穩定度；低於 12% 則小幅提升穩定度。</div>
+    </div>
+    <div class="card">
+      <h3>🏗️ 投資項目</h3>
+      <div class="inv-grid">
+        ${INVESTMENTS.map(inv=>{
+          const cost=investCost(inv.cost);
+          const can=S.treasury>=cost;
+          return `<button class="inv-btn" ${can?'':'disabled'} onclick="invest('${inv.id}')">
+            <div class="inv-icon">${inv.icon}</div>
+            <div class="inv-name">${inv.name}</div>
+            <div class="inv-desc">${inv.desc}</div>
+            <div class="inv-cost ${can?'':'bad'}">💰 ${fmt(cost)}</div>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <h3>🏛️ 建築一覽</h3>
+      <div class="hint" style="margin-top:0">在地圖上點擊我方領土，使用「建造」按鈕可蓋建築。</div>
+      <div class="inv-grid" style="margin-top:10px">
+        ${Object.entries(BUILDINGS).map(([id,b])=>`
+          <div class="inv-btn" style="cursor:default">
+            <div class="inv-icon">${b.icon}</div>
+            <div class="inv-name">${b.name}</div>
+            <div class="inv-desc">${Object.entries(b.effect).map(([k,v])=>`${k}+${v}`).join('・')}</div>
+            <div class="inv-cost">💰 ${b.cost}${b.req.terrain?'・限'+b.req.terrain.map(x=>TERRAIN[x].name).join('/'):''}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+function onTaxChange(v){
+  S.taxRate=+v;
+  document.getElementById('tax-val').textContent=v+'%';
+  document.getElementById('tax-hint').textContent=`預估稅收：${fmt(calcIncome())}／回合`;
+  renderStats();
+}
+
+function renderMilitary(){
+  const level=S.military>80?'超級強權':S.military>50?'區域強國':S.military>25?'中等軍事力量':S.military>10?'防禦性武力':'幾乎不設防';
+  document.getElementById('tab-military').innerHTML=`
+    <div class="card">
+      <h3>⚔️ 軍事行動</h3>
+      <div class="inv-grid">
+        ${MIL_ACTIONS.map(a=>{
+          const can=a.cost<0||S.treasury>=a.cost;
+          return `<button class="inv-btn" ${can?'':'disabled'} onclick="milAction('${a.id}')">
+            <div class="inv-icon">${a.icon}</div>
+            <div class="inv-name">${a.name}</div>
+            <div class="inv-desc">${a.desc}</div>
+            <div class="inv-cost">${a.cost<0?'💰 +'+fmt(-a.cost):'💰 '+fmt(a.cost)}</div>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <h3>📊 軍力分析</h3>
+      <div class="row"><span>目前軍力</span><span>${Math.round(S.military)}</span></div>
+      <div class="row"><span>軍事等級</span><span>${level}</span></div>
+      <div class="row"><span>每回合軍費</span><span class="neg">-${fmt(S.military*1.6)}</span></div>
+      <div class="row"><span>領土總數</span><span>${countTiles('player')}</span></div>
+      <div class="hint">軍力隨時間自然衰減（-0.5%／回合）。到「世界地圖」點擊敵方領土可發動進攻。</div>
+    </div>`;
+}
+
+function renderDiplomacy(){
+  document.getElementById('tab-diplomacy').innerHTML=`
+    <div class="card">
+      <h3>🌍 國際關係</h3>
+      ${S.nations.map((n,i)=>{
+        const rel=Math.round(n.relation);
+        const col=rel>60?'var(--green)':rel>20?'var(--gold)':'var(--red)';
+        return `<div class="nation">
+          <div class="nation-head">
+            <div class="nation-flag">${n.flag}</div>
+            <div class="nation-info">
+              <div class="nation-title">${n.name}${n.trade?'<span class="badge">貿易夥伴</span>':''}</div>
+              <div class="bar"><div class="bar-fill" style="width:${Math.max(0,rel)}%;background:${col}"></div></div>
+              <div style="font-size:10.5px;color:var(--muted);margin-top:3px">國力 ${Math.round(n.power)}</div>
+            </div>
+            <div class="nation-rel" style="color:${col}">${rel}</div>
+          </div>
+          <div class="nation-actions">
+            <button onclick="diplo(${i},'aid')">💰 援助 400</button>
+            <button onclick="diplo(${i},'culture')">🎭 交流 200</button>
+            <button onclick="diplo(${i},'drill')">🎖️ 軍演 300</button>
+            <button onclick="diplo(${i},'trade')">🤝 貿易 300</button>
+            <button onclick="diplo(${i},'condemn')">📢 譴責</button>
+          </div>
+        </div>`;
+      }).join('')}
+      <div class="hint">貿易協定需關係 ≥ 50，每建立一個夥伴稅收 +4%。</div>
+    </div>`;
+}
+
+function renderLog(){
+  const el=document.getElementById('tab-log');
+  if(!S.log.length){el.innerHTML='<div class="card"><div class="hint">尚無紀錄。</div></div>';return}
+  el.innerHTML=`<div class="card"><h3>📜 國家大事記</h3>
+    <div class="log-list">
+      ${S.log.map(l=>`<div class="log-item ${l.type}">
+        <span class="log-time">${l.year}年${l.month}月</span>${l.text}
+      </div>`).join('')}
+    </div></div>`;
+}
+
+/* ============================================================
+   十八、啟動
+============================================================ */
+buildSetup();
+</script>
+</body>
+</html>
